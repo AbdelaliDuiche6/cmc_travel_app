@@ -13,7 +13,7 @@ class SplashScreen extends StatelessWidget {
         body: Center(
           child: 
               SvgPicture.asset(
-                'assets/images/logo-cmc-travel.svg',
+                'assets/images/logo.svg',
                 width: 500,
                 height: 500,
                 semanticsLabel: 'CMC TRAVEL',
