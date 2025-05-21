@@ -1,5 +1,4 @@
-import 'package:cmc_travel_app/pages/login_screen.dart';
-import 'package:cmc_travel_app/services/auth/auth_gate.dart';
+
 import 'package:cmc_travel_app/splash_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';

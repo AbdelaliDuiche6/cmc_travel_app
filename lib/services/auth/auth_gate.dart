@@ -2,19 +2,17 @@ import 'package:cmc_travel_app/pages/admin_screen.dart';
 import 'package:cmc_travel_app/pages/login_screen.dart';
 import 'package:cmc_travel_app/pages/organizateur_screen.dart';
 import 'package:cmc_travel_app/pages/stagiaire_screen.dart';
-import 'package:cmc_travel_app/splash_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
 
-  // ✅ Updated to query the 'profiles' table, not 'User'
   Future<String?> fetchUserRole(String userId) async {
     final response = await Supabase.instance.client
-        .from('profiles') // 👈 Correct table name
+        .from('profiles') 
         .select('role')
-        .eq('id', userId) // 👈 Must match auth.users.id
+        .eq('id', userId) 
         .single();
 
     return response['role'];
@@ -59,7 +57,6 @@ class AuthGate extends StatelessWidget {
             },
           );
         }
-
         return const LoginScreen(); // If not logged in
       },
     );
