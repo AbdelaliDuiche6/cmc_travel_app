@@ -12,7 +12,6 @@ class OrgHomePage extends StatefulWidget {
 
 class _OrgHomePageState extends State<OrgHomePage> {
   final supabase = Supabase.instance.client;
-
   List<Map<String, dynamic>> trips = [];
   bool isLoading = true;
 
@@ -25,7 +24,6 @@ class _OrgHomePageState extends State<OrgHomePage> {
   Future<void> fetchTrips() async {
     try {
       final user = supabase.auth.currentUser;
-
       if (user == null) {
         print("User not logged in");
         return;
@@ -34,7 +32,7 @@ class _OrgHomePageState extends State<OrgHomePage> {
       final response = await supabase
           .from('Voyage')
           .select()
-          .eq('organizer_id', user.id) // Replace with 'organizer_id' if needed
+          .eq('organizer_id', user.id)
           .order('date', ascending: true);
 
       final data = response as List<dynamic>;
@@ -48,6 +46,15 @@ class _OrgHomePageState extends State<OrgHomePage> {
       setState(() {
         isLoading = false;
       });
+    }
+  }
+
+  Future<void> deleteTrip(String id) async {
+    try {
+      await supabase.from('Voyage').delete().eq('id', id);
+      fetchTrips();
+    } catch (e) {
+      print('Error deleting trip: $e');
     }
   }
 
@@ -74,7 +81,7 @@ class _OrgHomePageState extends State<OrgHomePage> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(builder: (context) => AddTripPage()),
-                        );
+                        ).then((_) => fetchTrips());
                       },
                       child: Material(
                         elevation: 3.0,
@@ -85,11 +92,7 @@ class _OrgHomePageState extends State<OrgHomePage> {
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          child: Icon(
-                            Icons.add,
-                            color: Colors.black,
-                            size: 30.0,
-                          ),
+                          child: Icon(Icons.add, color: Colors.black, size: 30.0),
                         ),
                       ),
                     ),
@@ -160,12 +163,9 @@ class _OrgHomePageState extends State<OrgHomePage> {
               ),
             ],
           ),
-
           if (isLoading)
             Expanded(
-              child: Center(
-                child: CircularProgressIndicator(),
-              ),
+              child: Center(child: CircularProgressIndicator()),
             )
           else
             Expanded(
@@ -180,16 +180,75 @@ class _OrgHomePageState extends State<OrgHomePage> {
                           margin: EdgeInsets.only(bottom: 15),
                           elevation: 3,
                           shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
-                          child: ListTile(
-                            contentPadding: EdgeInsets.all(15),
-                            title: Text(
-                              trip['title'] ?? 'No Title',
-                              style: TextStyle(
-                                  fontSize: 18, fontWeight: FontWeight.bold),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(15),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  trip['title'] ?? 'No Title',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                SizedBox(height: 5),
+                                Text(
+                                  "Date: ${trip['date'] ?? '-'}\nPrice: \$${trip['price_per_person'] ?? '-'}",
+                                ),
+                                SizedBox(height: 10),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.end,
+                                  children: [
+                                    ElevatedButton.icon(
+                                      onPressed: () {
+                                        // TODO: Navigate to EditTripPage
+                                        print("Edit trip ${trip['id']}");
+                                      },
+                                      icon: Icon(Icons.edit, size: 18),
+                                      label: Text("Edit"),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.blue,
+                                        foregroundColor: Colors.white,
+                                      ),
+                                    ),
+                                    SizedBox(width: 10),
+                                    ElevatedButton.icon(
+                                      onPressed: () {
+                                        showDialog(
+                                          context: context,
+                                          builder: (context) => AlertDialog(
+                                            title: Text("Confirm Delete"),
+                                            content: Text("Are you sure you want to delete this trip?"),
+                                            actions: [
+                                              TextButton(
+                                                child: Text("Cancel"),
+                                                onPressed: () => Navigator.pop(context),
+                                              ),
+                                              TextButton(
+                                                child: Text("Delete", style: TextStyle(color: Colors.red)),
+                                                onPressed: () {
+                                                  Navigator.pop(context);
+                                                  deleteTrip(trip['id']);
+                                                },
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      },
+                                      icon: Icon(Icons.delete, size: 18),
+                                      label: Text("Delete"),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.red,
+                                        foregroundColor: Colors.white,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ),
-                            subtitle: Text(
-                                "Date: ${trip['date'] ?? '-'}\nPrice: \$${trip['price_per_person'] ?? '-'}"),
                           ),
                         );
                       },
