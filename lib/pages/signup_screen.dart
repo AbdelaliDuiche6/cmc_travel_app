@@ -147,6 +147,7 @@ void signUp() async {
                     ),),
                   const SizedBox(height: 4),
                   TextField(
+                    keyboardType: TextInputType.number,
                     controller: _phoneController,
                     decoration: InputDecoration(
                       border: OutlineInputBorder(
@@ -165,6 +166,7 @@ void signUp() async {
                     ),),
                   const SizedBox(height: 4),
                   TextField(
+                    keyboardType: TextInputType.emailAddress,
                     controller: _emailController,
                     decoration: InputDecoration(
                       border: OutlineInputBorder(
@@ -182,6 +184,7 @@ void signUp() async {
                     ),),
                   const SizedBox(height: 4),
                   TextField(
+                    obscureText: true,
                     controller: _passwordController,
                     decoration: InputDecoration(
                       border: OutlineInputBorder(
