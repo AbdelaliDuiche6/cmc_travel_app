@@ -1,6 +1,7 @@
 import 'package:cmc_travel_app/pages/organizer/org_add_trip.dart';
 import 'package:cmc_travel_app/pages/organizer/org_profile_page.dart';
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class OrgHomePage extends StatefulWidget {
   const OrgHomePage({super.key});
@@ -10,6 +11,46 @@ class OrgHomePage extends StatefulWidget {
 }
 
 class _OrgHomePageState extends State<OrgHomePage> {
+  final supabase = Supabase.instance.client;
+
+  List<Map<String, dynamic>> trips = [];
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    fetchTrips();
+  }
+
+  Future<void> fetchTrips() async {
+    try {
+      final user = supabase.auth.currentUser;
+
+      if (user == null) {
+        print("User not logged in");
+        return;
+      }
+
+      final response = await supabase
+          .from('Voyage')
+          .select()
+          .eq('organizer_id', user.id) // Replace with 'organizer_id' if needed
+          .order('date', ascending: true);
+
+      final data = response as List<dynamic>;
+
+      setState(() {
+        trips = data.map((e) => e as Map<String, dynamic>).toList();
+        isLoading = false;
+      });
+    } catch (error) {
+      print('Error fetching trips: $error');
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -32,9 +73,7 @@ class _OrgHomePageState extends State<OrgHomePage> {
                       onTap: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(
-                            builder: (context) => AddTripPage(),
-                          ),
+                          MaterialPageRoute(builder: (context) => AddTripPage()),
                         );
                       },
                       child: Material(
@@ -59,9 +98,7 @@ class _OrgHomePageState extends State<OrgHomePage> {
                       onTap: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(
-                            builder: (context) => OrgProfilePage(),
-                          ),
+                          MaterialPageRoute(builder: (context) => OrgProfilePage()),
                         );
                       },
                       child: Material(
@@ -123,6 +160,41 @@ class _OrgHomePageState extends State<OrgHomePage> {
               ),
             ],
           ),
+
+          if (isLoading)
+            Expanded(
+              child: Center(
+                child: CircularProgressIndicator(),
+              ),
+            )
+          else
+            Expanded(
+              child: trips.isEmpty
+                  ? Center(child: Text('No trips found'))
+                  : ListView.builder(
+                      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                      itemCount: trips.length,
+                      itemBuilder: (context, index) {
+                        final trip = trips[index];
+                        return Card(
+                          margin: EdgeInsets.only(bottom: 15),
+                          elevation: 3,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                          child: ListTile(
+                            contentPadding: EdgeInsets.all(15),
+                            title: Text(
+                              trip['title'] ?? 'No Title',
+                              style: TextStyle(
+                                  fontSize: 18, fontWeight: FontWeight.bold),
+                            ),
+                            subtitle: Text(
+                                "Date: ${trip['date'] ?? '-'}\nPrice: \$${trip['price_per_person'] ?? '-'}"),
+                          ),
+                        );
+                      },
+                    ),
+            ),
         ],
       ),
     );

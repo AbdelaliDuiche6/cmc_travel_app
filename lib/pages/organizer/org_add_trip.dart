@@ -1,3 +1,4 @@
+import 'package:cmc_travel_app/models/Trip.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
@@ -14,21 +15,17 @@ class _AddTripPageState extends State<AddTripPage> {
 
   String? _type;
   String? _status;
-  DateTime? _startDate;
-  DateTime? _endDate;
+  DateTime? _date;
   File? _image;
   String? _programUrl;
 
-  final TextEditingController _titleController = TextEditingController();
-  final TextEditingController _descController = TextEditingController();
-  final TextEditingController _priceController = TextEditingController();
-  final TextEditingController _seatsController = TextEditingController();
-  final TextEditingController _placesController = TextEditingController();
+  final _titleController = TextEditingController();
+  final _descController = TextEditingController();
+  final _priceController = TextEditingController();
+  final _seatsController = TextEditingController();
+  final _dateController = TextEditingController();
 
-  final TextEditingController _startDateController = TextEditingController();
-  final TextEditingController _endDateController = TextEditingController();
-
-  Future<void> _pickDate({required bool isStart}) async {
+  Future<void> _pickDate() async {
     final picked = await showDatePicker(
       context: context,
       initialDate: DateTime.now(),
@@ -37,13 +34,8 @@ class _AddTripPageState extends State<AddTripPage> {
     );
     if (picked != null) {
       setState(() {
-        if (isStart) {
-          _startDate = picked;
-          _startDateController.text = _formatDate(picked);
-        } else {
-          _endDate = picked;
-          _endDateController.text = _formatDate(picked);
-        }
+        _date = picked;
+        _dateController.text = _formatDate(picked);
       });
     }
   }
@@ -64,42 +56,50 @@ class _AddTripPageState extends State<AddTripPage> {
 
   void _downloadProgram() {
     setState(() {
-      _programUrl = "https://example/program.pdf";
+      _programUrl = "https://example.com/program.pdf"; // Placeholder
     });
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text("Program downloaded")));
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Program downloaded")),
+    );
   }
 
   void _publish() {
     if (_formKey.currentState!.validate()) {
-      print("Publishing Trip:");
-      print("Title: ${_titleController.text}");
-      print("Desc: ${_descController.text}");
-      print("Type: $_type");
-      print("Start Date: $_startDate");
-      print("End Date: $_endDate");
-      print("Price: ${_priceController.text}");
-      print("Seats: ${_seatsController.text}");
-      print("Status: $_status");
-      print("Image: ${_image?.path}");
-      print("Program URL: $_programUrl");
+      final String organizerId = "current-user-id-123"; // Simulated user ID
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Trip Published (simulated)")));
+      final trip = Trip(
+        title: _titleController.text,
+        description: _descController.text,
+        type: _type!,
+        date: _date!,
+        price: _priceController.text,
+        seats: _seatsController.text,
+        status: _status!,
+        image: _image,
+        programUrl: _programUrl,
+        organizerId: organizerId,
+      );
+
+      print("Trip Published: ${trip.title}");
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Trip Published (simulated)")),
+      );
+
+      // TODO: Submit trip data to Supabase
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    OutlineInputBorder border = OutlineInputBorder(
+    final border = OutlineInputBorder(
       borderRadius: BorderRadius.circular(35),
-      borderSide: BorderSide(width: 2.0, color: Colors.black),
+      borderSide: const BorderSide(width: 2.0, color: Colors.black),
     );
 
     return Scaffold(
-      appBar: AppBar(title: Text("Create Trip")),
+      appBar: AppBar(title: const Text("Create Trip")),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Form(
@@ -108,6 +108,7 @@ class _AddTripPageState extends State<AddTripPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Image Picker
                 Center(
                   child: GestureDetector(
                     onTap: _pickImage,
@@ -117,23 +118,22 @@ class _AddTripPageState extends State<AddTripPage> {
                       decoration: BoxDecoration(
                         border: Border.all(color: Colors.black45, width: 2.0),
                         borderRadius: BorderRadius.circular(20),
-                        image:
-                            _image != null
-                                ? DecorationImage(
-                                  image: FileImage(_image!),
-                                  fit: BoxFit.cover,
-                                )
-                                : null,
+                        image: _image != null
+                            ? DecorationImage(
+                                image: FileImage(_image!),
+                                fit: BoxFit.cover,
+                              )
+                            : null,
                       ),
-                      child:
-                          _image == null
-                              ? Icon(Icons.camera_alt_outlined, size: 40)
-                              : null,
+                      child: _image == null
+                          ? const Icon(Icons.camera_alt_outlined, size: 40)
+                          : null,
                     ),
                   ),
                 ),
-                SizedBox(height: 20),
+                const SizedBox(height: 20),
 
+                // Title
                 TextFormField(
                   controller: _titleController,
                   decoration: InputDecoration(
@@ -141,12 +141,12 @@ class _AddTripPageState extends State<AddTripPage> {
                     border: border,
                     enabledBorder: border,
                   ),
-                  validator:
-                      (value) =>
-                          value == null || value.isEmpty ? 'Required' : null,
+                  validator: (value) =>
+                      value == null || value.isEmpty ? 'Required' : null,
                 ),
-                SizedBox(height: 12),
+                const SizedBox(height: 12),
 
+                // Description
                 TextFormField(
                   controller: _descController,
                   decoration: InputDecoration(
@@ -154,12 +154,12 @@ class _AddTripPageState extends State<AddTripPage> {
                     border: border,
                     enabledBorder: border,
                   ),
-                  validator:
-                      (value) =>
-                          value == null || value.isEmpty ? 'Required' : null,
+                  validator: (value) =>
+                      value == null || value.isEmpty ? 'Required' : null,
                 ),
-                SizedBox(height: 12),
+                const SizedBox(height: 12),
 
+                // Type Dropdown
                 DropdownButtonFormField<String>(
                   decoration: InputDecoration(
                     labelText: "Type",
@@ -167,56 +167,34 @@ class _AddTripPageState extends State<AddTripPage> {
                     enabledBorder: border,
                   ),
                   value: _type,
-                  onChanged: (value) {
-                    setState(() {
-                      _type = value;
-                    });
-                  },
-                  items:
-                      ['Adventure', 'Relax', 'Cultural']
-                          .map(
-                            (type) => DropdownMenuItem(
-                              value: type,
-                              child: Text(type),
-                            ),
-                          )
-                          .toList(),
-                  validator:
-                      (value) => value == null ? 'Please select a type' : null,
+                  onChanged: (value) => setState(() => _type = value),
+                  items: ['Adventure', 'Relax', 'Cultural']
+                      .map((type) => DropdownMenuItem(
+                            value: type,
+                            child: Text(type),
+                          ))
+                      .toList(),
+                  validator: (value) =>
+                      value == null ? 'Please select a type' : null,
                 ),
-                SizedBox(height: 12),
+                const SizedBox(height: 12),
 
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _startDateController,
-                        readOnly: true,
-                        decoration: InputDecoration(
-                          labelText: "Start Date",
-                          border: border,
-                          enabledBorder: border,
-                        ),
-                        onTap: () => _pickDate(isStart: true),
-                      ),
-                    ),
-                    SizedBox(width: 12),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _endDateController,
-                        readOnly: true,
-                        decoration: InputDecoration(
-                          labelText: "End Date",
-                          border: border,
-                          enabledBorder: border,
-                        ),
-                        onTap: () => _pickDate(isStart: false),
-                      ),
-                    ),
-                  ],
+                // Start Date
+                TextFormField(
+                  controller: _dateController,
+                  readOnly: true,
+                  decoration: InputDecoration(
+                    labelText: "Date",
+                    border: border,
+                    enabledBorder: border,
+                  ),
+                  onTap: _pickDate,
+                  validator: (value) =>
+                      value == null || value.isEmpty ? 'Required' : null,
                 ),
-                SizedBox(height: 12),
+                const SizedBox(height: 12),
 
+                // Price and Seats
                 Row(
                   children: [
                     Expanded(
@@ -228,14 +206,11 @@ class _AddTripPageState extends State<AddTripPage> {
                           enabledBorder: border,
                         ),
                         keyboardType: TextInputType.number,
-                        validator:
-                            (value) =>
-                                value == null || value.isEmpty
-                                    ? 'Required'
-                                    : null,
+                        validator: (value) =>
+                            value == null || value.isEmpty ? 'Required' : null,
                       ),
                     ),
-                    SizedBox(width: 12),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: TextFormField(
                         controller: _seatsController,
@@ -245,17 +220,15 @@ class _AddTripPageState extends State<AddTripPage> {
                           enabledBorder: border,
                         ),
                         keyboardType: TextInputType.number,
-                        validator:
-                            (value) =>
-                                value == null || value.isEmpty
-                                    ? 'Required'
-                                    : null,
+                        validator: (value) =>
+                            value == null || value.isEmpty ? 'Required' : null,
                       ),
                     ),
                   ],
                 ),
-                SizedBox(height: 12),
+                const SizedBox(height: 12),
 
+                // Status Dropdown
                 DropdownButtonFormField<String>(
                   decoration: InputDecoration(
                     labelText: "Status",
@@ -263,48 +236,42 @@ class _AddTripPageState extends State<AddTripPage> {
                     enabledBorder: border,
                   ),
                   value: _status,
-                  onChanged: (value) {
-                    setState(() {
-                      _status = value;
-                    });
-                  },
-                  items:
-                      ['Published', 'In Progress', 'Finished']
-                          .map(
-                            (status) => DropdownMenuItem(
-                              value: status,
-                              child: Text(status),
-                            ),
-                          )
-                          .toList(),
-                  validator:
-                      (value) =>
-                          value == null ? 'Please select a status' : null,
+                  onChanged: (value) => setState(() => _status = value),
+                  items: ['Published', 'In Progress', 'Finished']
+                      .map((status) => DropdownMenuItem(
+                            value: status,
+                            child: Text(status),
+                          ))
+                      .toList(),
+                  validator: (value) =>
+                      value == null ? 'Please select a status' : null,
                 ),
-                SizedBox(height: 20),
+                const SizedBox(height: 20),
 
+                // Download Button
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: _downloadProgram,
-                    child: Text("Download Program"),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.black,
                       foregroundColor: Colors.white,
                     ),
+                    child: const Text("Download Program"),
                   ),
                 ),
-                SizedBox(height: 10),
+                const SizedBox(height: 10),
 
+                // Publish Button
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: _publish,
-                    child: Text("Publish"),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.black,
                       foregroundColor: Colors.white,
                     ),
+                    child: const Text("Publish"),
                   ),
                 ),
               ],

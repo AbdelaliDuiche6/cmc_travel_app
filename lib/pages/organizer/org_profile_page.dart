@@ -1,3 +1,4 @@
+import 'package:cmc_travel_app/pages/login_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'org_modify_page.dart';
@@ -83,7 +84,7 @@ class _OrgProfilePageState extends State<OrgProfilePage> {
               icon: Icon(Icons.logout, color: Colors.red),
               onPressed: () async {
                 await Supabase.instance.client.auth.signOut();
-                Navigator.of(context).popUntil((route) => route.isFirst);
+                Navigator.push(context , MaterialPageRoute(builder: (context) => LoginScreen()));
               },
             ),
           ),
