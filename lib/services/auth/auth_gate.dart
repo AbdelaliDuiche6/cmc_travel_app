@@ -1,4 +1,4 @@
-import 'package:cmc_travel_app/pages/admin_screen.dart';
+import 'package:cmc_travel_app/pages/admin/admin_screen.dart';
 import 'package:cmc_travel_app/pages/login_screen.dart';
 import 'package:cmc_travel_app/pages/organizateur_screen.dart';
 import 'package:cmc_travel_app/pages/stagiaire_screen.dart';
