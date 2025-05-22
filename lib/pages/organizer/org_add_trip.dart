@@ -132,24 +132,6 @@ class _AddTripPageState extends State<AddTripPage> {
                     ),
                   ),
                 ),
-
-                // Center(
-                //   child: ElevatedButton.icon(
-                //     onPressed: _pickImage,
-                //     icon: Icon(Icons.camera_alt, color: Colors.black),
-                //     label: Text(
-                //       "Add Photo",
-                //       style: TextStyle(color: Colors.black),
-                //     ),
-                //     style: ElevatedButton.styleFrom(
-                //       backgroundColor: Colors.white,
-                //       side: BorderSide(color: Colors.grey),
-                //       shape: RoundedRectangleBorder(
-                //         borderRadius: BorderRadius.circular(8),
-                //       ),
-                //     ),
-                //   ),
-                // ),
                 SizedBox(height: 20),
 
                 TextFormField(
