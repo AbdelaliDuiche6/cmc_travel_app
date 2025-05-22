@@ -128,6 +128,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),),
                 const SizedBox(height: 4),
                 TextField(
+                  obscureText: true,
                   controller: _passwordController,
                   decoration: InputDecoration(
                     border: OutlineInputBorder(
