@@ -1,5 +1,5 @@
-import 'package:cmc_travel_app/pages/org_add_trip.dart';
-import 'package:cmc_travel_app/pages/org_profile_page.dart';
+import 'package:cmc_travel_app/pages/organizer/org_add_trip.dart';
+import 'package:cmc_travel_app/pages/organizer/org_profile_page.dart';
 import 'package:flutter/material.dart';
 
 class OrgHomePage extends StatefulWidget {

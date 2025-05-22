@@ -1,5 +1,5 @@
-import 'package:cmc_travel_app/pages/org_home_page.dart';
-import 'package:cmc_travel_app/pages/org_profile_page.dart';
+import 'package:cmc_travel_app/pages/organizer/org_home_page.dart';
+import 'package:cmc_travel_app/pages/organizer/org_profile_page.dart';
 import 'package:cmc_travel_app/splash_screen.dart';
 import 'package:flutter/material.dart';
 
@@ -14,7 +14,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: ProfilePage(),
+      home:  OrgHomePage(),
     );
   }
 }
