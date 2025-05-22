@@ -60,7 +60,7 @@ class _OrgHomePageState extends State<OrgHomePage> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => ProfilePage(),
+                            builder: (context) => OrgProfilePage(),
                           ),
                         );
                       },
