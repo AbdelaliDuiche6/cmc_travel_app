@@ -1,7 +1,7 @@
 import 'package:cmc_travel_app/components/my_button.dart';
 import 'package:cmc_travel_app/pages/login_screen.dart';
 import 'package:cmc_travel_app/services/auth/auth_service.dart';
-import 'package:cmc_travel_app/splash_screen.dart';
+import 'package:cmc_travel_app/pages/splash_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 

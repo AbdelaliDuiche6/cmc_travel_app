@@ -260,7 +260,7 @@ class _AdminScreenState extends State<AdminScreen> {
                                             );
 
                                             setState(() {
-                                              voyages.removeAt(index); // ✅ Better than removeWhere
+                                              voyages.removeAt(index);
                                             });
                                           } else {
                                             throw Exception("Update failed or returned no result.");

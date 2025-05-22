@@ -2,7 +2,7 @@ import 'package:cmc_travel_app/services/auth/auth_gate.dart';
 import 'package:cmc_travel_app/services/auth/auth_service.dart';
 import 'package:cmc_travel_app/components/my_button.dart';
 import 'package:cmc_travel_app/pages/signup_screen.dart';
-import 'package:cmc_travel_app/splash_screen.dart';
+import 'package:cmc_travel_app/pages/splash_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
