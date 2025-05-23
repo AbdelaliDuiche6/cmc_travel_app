@@ -12,8 +12,13 @@ class OrgHomePage extends StatefulWidget {
 
 class _OrgHomePageState extends State<OrgHomePage> {
   final supabase = Supabase.instance.client;
+
   List<Map<String, dynamic>> trips = [];
+  List<Map<String, dynamic>> filteredTrips = [];
+
   bool isLoading = true;
+  TextEditingController searchController = TextEditingController();
+  String searchQuery = "";
 
   @override
   void initState() {
@@ -39,6 +44,7 @@ class _OrgHomePageState extends State<OrgHomePage> {
 
       setState(() {
         trips = data.map((e) => e as Map<String, dynamic>).toList();
+        filteredTrips = trips;
         isLoading = false;
       });
     } catch (error) {
@@ -56,6 +62,16 @@ class _OrgHomePageState extends State<OrgHomePage> {
     } catch (e) {
       print('Error deleting trip: $e');
     }
+  }
+
+  void updateSearch(String query) {
+    setState(() {
+      searchQuery = query.toLowerCase();
+      filteredTrips = trips.where((trip) {
+        final title = trip['title']?.toString().toLowerCase() ?? '';
+        return title.contains(searchQuery);
+      }).toList();
+    });
   }
 
   @override
@@ -150,6 +166,8 @@ class _OrgHomePageState extends State<OrgHomePage> {
                       borderRadius: BorderRadius.circular(10.0),
                     ),
                     child: TextField(
+                      controller: searchController,
+                      onChanged: updateSearch,
                       decoration: InputDecoration(
                         border: InputBorder.none,
                         hintText: "Search your destination",
@@ -169,13 +187,13 @@ class _OrgHomePageState extends State<OrgHomePage> {
             )
           else
             Expanded(
-              child: trips.isEmpty
+              child: filteredTrips.isEmpty
                   ? Center(child: Text('No trips found'))
                   : ListView.builder(
                       padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                      itemCount: trips.length,
+                      itemCount: filteredTrips.length,
                       itemBuilder: (context, index) {
-                        final trip = trips[index];
+                        final trip = filteredTrips[index];
                         return Card(
                           margin: EdgeInsets.only(bottom: 15),
                           elevation: 3,
