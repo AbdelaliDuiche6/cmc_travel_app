@@ -55,17 +55,44 @@ class _OrgHomePageState extends State<OrgHomePage> {
     }
   }
 
-  Future<void> deleteTrip(String id) async {
+  Future<void> deleteTrip(dynamic id) async {
+    // id is dynamic, could be String or int depending on DB schema
     try {
-      await supabase.from('Voyage').delete().eq('id', id);
-      fetchTrips();
+      print('Deleting trip with id: $id, type: ${id.runtimeType}');
+
+      // Adjust this if your id in DB is integer, parse accordingly:
+      // final deleteId = (id is String) ? int.tryParse(id) ?? id : id;
+
+      final response = await supabase
+          .from('Voyage')
+          .delete()
+          .eq('id', id)
+          .select(); // Use select() to get deleted rows back
+
+      print('Delete response: $response');
+
+      if (response == null || (response is List && response.isEmpty)) {
+        throw Exception('No trip deleted, check the id and query');
+      }
+
+      setState(() {
+        trips.removeWhere((trip) => trip['id'] == id);
+        filteredTrips.removeWhere((trip) => trip['id'] == id);
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Trip deleted successfully")),
+      );
     } catch (e) {
       print('Error deleting trip: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Failed to delete trip")),
+      );
     }
   }
 
   void updateSearch(String query) {
-    setState(() {
+    setState(() { 
       searchQuery = query.toLowerCase();
       filteredTrips = trips.where((trip) {
         final title = trip['title']?.toString().toLowerCase() ?? '';
