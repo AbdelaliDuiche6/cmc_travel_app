@@ -113,7 +113,37 @@ class _UsersScreenState extends State<UsersScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("users screen")),
+      appBar: AppBar(
+  title: Center(
+    child: const Text(
+      'Users',
+      style: TextStyle(
+        fontSize: 22.0,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 1.2,
+        color: Colors.white,
+        fontFamily: 'Poppins', // Ou 'Montserrat' si préféré
+      ),
+    ),
+  ),
+  
+  centerTitle: true,
+  backgroundColor: const Color.fromARGB(255, 58, 183, 162), // Ou Colors.indigo[800]
+  elevation: 8,
+  shadowColor: const Color.fromARGB(255, 58, 183, 171).withOpacity(0.5),
+  shape: const RoundedRectangleBorder(
+    borderRadius: BorderRadius.vertical(
+      bottom: Radius.circular(15),
+    ),
+  ),
+  toolbarHeight: 70,
+  actions: [
+    IconButton(
+      icon: const Icon(Icons.notifications, size: 26),
+      onPressed: () {},
+    ),
+  ],
+),
       body:
           isLoading
               ? const Center(child: CircularProgressIndicator())

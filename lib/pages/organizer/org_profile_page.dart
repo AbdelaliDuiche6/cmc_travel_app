@@ -1,4 +1,6 @@
+import 'package:cmc_travel_app/pages/login_screen.dart';
 import 'package:cmc_travel_app/pages/organizer/org_modify_page.dart';
+import 'package:cmc_travel_app/services/auth/auth_service.dart';
 import 'package:flutter/material.dart';
 import 'package:cmc_travel_app/pages/organizer/org_profile_page.dart';
 
@@ -8,6 +10,7 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
+  final authService = AuthService();
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -19,7 +22,11 @@ class _ProfilePageState extends State<ProfilePage> {
             child: IconButton(
               icon: Icon(Icons.logout, color: Colors.red),
               onPressed: () {
-                // Logout functionality here
+                authService.signOut();
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => LoginScreen()),
+                );
               },
             ),
           ),
@@ -43,7 +50,7 @@ class _ProfilePageState extends State<ProfilePage> {
             SizedBox(height: 5),
             Text("Role: Organize", style: TextStyle(color: Colors.grey)),
             SizedBox(height: 20),
-            
+
             // Using Card for user info
             Card(
               child: Padding(
@@ -61,7 +68,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
               ),
             ),
-            
+
             SizedBox(height: 20),
             ElevatedButton(
               onPressed: () {

@@ -27,7 +27,7 @@ class _AdminScreenState extends State<AdminScreen> {
     try {
       final response = await supabase
           .from('Voyage')
-          .select()
+          .select('*, profiles(name)')
           .eq('status', 'en_cours')
           .order('date', ascending: true);
 
@@ -92,7 +92,37 @@ class _AdminScreenState extends State<AdminScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Center(child: const Text('Commends Trips'))),
+      appBar: 
+      AppBar(
+  title: Center(
+    child: const Text(
+      'Commandes Trips',
+      style: TextStyle(
+        fontSize: 22.0,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 1.2,
+        color: Colors.white,
+        fontFamily: 'Poppins', // Ou 'Montserrat' si préféré
+      ),
+    ),
+  ),
+  centerTitle: true,
+  backgroundColor: const Color.fromARGB(255, 58, 183, 150), // Ou Colors.indigo[800]
+  elevation: 8,
+  shadowColor: const Color.fromARGB(255, 58, 171, 183).withOpacity(0.5),
+  shape: const RoundedRectangleBorder(
+    borderRadius: BorderRadius.vertical(
+      bottom: Radius.circular(15),
+    ),
+  ),
+  toolbarHeight: 70,
+  actions: [
+    IconButton(
+      icon: const Icon(Icons.notifications, size: 26),
+      onPressed: () {},
+    ),
+  ],
+),
       body:
           isLoading
               ? const Center(child: CircularProgressIndicator())
@@ -135,44 +165,31 @@ class _AdminScreenState extends State<AdminScreen> {
                             ),
                           ),
                           subtitle: Padding(
-                            padding: const EdgeInsets.only(top: 8.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                _buildInfoRow(Icons.category, voyage['type']),
-                                const SizedBox(height: 4),
-                                _buildInfoRow(
-                                  Icons.description,
-                                  voyage['description'],
-                                ),
-                                const SizedBox(height: 4),
-                                _buildInfoRow(Icons.date_range, voyage['date']),
-                                const SizedBox(height: 8),
-                                _buildInfoRow(
-                                  Icons.price_change_sharp,
-                                  "${voyage['price_per_person']} DH",
-                                ),
-                                const SizedBox(height: 4),
-                                Row(
-                                  children: [
-                                    const Icon(
-                                      Icons.people,
-                                      size: 16,
-                                      color: Colors.grey,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      "${voyage['nbr_places']} places",
-                                      style: const TextStyle(
-                                        fontSize: 14,
-                                        color: Colors.grey,
+                                  padding: const EdgeInsets.only(top: 8.0),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      _buildInfoRow(Icons.person, "Organisateur: ${voyage['profiles']['name']}"),
+                                      const SizedBox(height: 4),
+                                      _buildInfoRow(Icons.category, voyage['type']),
+                                      const SizedBox(height: 4),
+                                      _buildInfoRow(Icons.description, voyage['description']),
+                                      const SizedBox(height: 4),
+                                      _buildInfoRow(Icons.date_range, voyage['date']),
+                                      const SizedBox(height: 8),
+                                      _buildInfoRow(Icons.price_change_sharp, "${voyage['price_per_person']} DH"),
+                                      const SizedBox(height: 4),
+                                      Row(
+                                        children: [
+                                          const Icon(Icons.people, size: 16, color: Colors.grey),
+                                          const SizedBox(width: 4),
+                                          Text("${voyage['nbr_places']} places", style: const TextStyle(fontSize: 14, color: Colors.grey)),
+                                        ],
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
-                              ],
-                            ),
-                          ),
+
                           contentPadding: const EdgeInsets.symmetric(
                             vertical: 8,
                             horizontal: 16,
