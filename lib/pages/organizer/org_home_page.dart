@@ -1,4 +1,5 @@
 import 'package:cmc_travel_app/pages/organizer/org_add_trip.dart';
+import 'package:cmc_travel_app/pages/organizer/org_edit_trip.dart';
 import 'package:cmc_travel_app/pages/organizer/org_profile_page.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -63,11 +64,12 @@ class _OrgHomePageState extends State<OrgHomePage> {
       // Adjust this if your id in DB is integer, parse accordingly:
       // final deleteId = (id is String) ? int.tryParse(id) ?? id : id;
 
-      final response = await supabase
-          .from('Voyage')
-          .delete()
-          .eq('id', id)
-          .select(); // Use select() to get deleted rows back
+      final response =
+          await supabase
+              .from('Voyage')
+              .delete()
+              .eq('id', id)
+              .select(); // Use select() to get deleted rows back
 
       print('Delete response: $response');
 
@@ -80,24 +82,25 @@ class _OrgHomePageState extends State<OrgHomePage> {
         filteredTrips.removeWhere((trip) => trip['id'] == id);
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Trip deleted successfully")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Trip deleted successfully")));
     } catch (e) {
       print('Error deleting trip: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Failed to delete trip")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Failed to delete trip")));
     }
   }
 
   void updateSearch(String query) {
-    setState(() { 
+    setState(() {
       searchQuery = query.toLowerCase();
-      filteredTrips = trips.where((trip) {
-        final title = trip['title']?.toString().toLowerCase() ?? '';
-        return title.contains(searchQuery);
-      }).toList();
+      filteredTrips =
+          trips.where((trip) {
+            final title = trip['title']?.toString().toLowerCase() ?? '';
+            return title.contains(searchQuery);
+          }).toList();
     });
   }
 
@@ -123,7 +126,9 @@ class _OrgHomePageState extends State<OrgHomePage> {
                       onTap: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => AddTripPage()),
+                          MaterialPageRoute(
+                            builder: (context) => AddTripPage(),
+                          ),
                         ).then((_) => fetchTrips());
                       },
                       child: Material(
@@ -135,7 +140,11 @@ class _OrgHomePageState extends State<OrgHomePage> {
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          child: Icon(Icons.add, color: Colors.black, size: 30.0),
+                          child: Icon(
+                            Icons.add,
+                            color: Colors.black,
+                            size: 30.0,
+                          ),
                         ),
                       ),
                     ),
@@ -144,7 +153,9 @@ class _OrgHomePageState extends State<OrgHomePage> {
                       onTap: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => OrgProfilePage()),
+                          MaterialPageRoute(
+                            builder: (context) => OrgProfilePage(),
+                          ),
                         );
                       },
                       child: Material(
@@ -209,95 +220,118 @@ class _OrgHomePageState extends State<OrgHomePage> {
             ],
           ),
           if (isLoading)
-            Expanded(
-              child: Center(child: CircularProgressIndicator()),
-            )
+            Expanded(child: Center(child: CircularProgressIndicator()))
           else
             Expanded(
-              child: filteredTrips.isEmpty
-                  ? Center(child: Text('No trips found'))
-                  : ListView.builder(
-                      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                      itemCount: filteredTrips.length,
-                      itemBuilder: (context, index) {
-                        final trip = filteredTrips[index];
-                        return Card(
-                          margin: EdgeInsets.only(bottom: 15),
-                          elevation: 3,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(15),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  trip['title'] ?? 'No Title',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                SizedBox(height: 5),
-                                Text(
-                                  "Date: ${trip['date'] ?? '-'}\nPrice: \$${trip['price_per_person'] ?? '-'}",
-                                ),
-                                SizedBox(height: 10),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.end,
-                                  children: [
-                                    ElevatedButton.icon(
-                                      onPressed: () {
-                                        // TODO: Navigate to EditTripPage
-                                        print("Edit trip ${trip['id']}");
-                                      },
-                                      icon: Icon(Icons.edit, size: 18),
-                                      label: Text("Edit"),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.blue,
-                                        foregroundColor: Colors.white,
-                                      ),
-                                    ),
-                                    SizedBox(width: 10),
-                                    ElevatedButton.icon(
-                                      onPressed: () {
-                                        showDialog(
-                                          context: context,
-                                          builder: (context) => AlertDialog(
-                                            title: Text("Confirm Delete"),
-                                            content: Text("Are you sure you want to delete this trip?"),
-                                            actions: [
-                                              TextButton(
-                                                child: Text("Cancel"),
-                                                onPressed: () => Navigator.pop(context),
-                                              ),
-                                              TextButton(
-                                                child: Text("Delete", style: TextStyle(color: Colors.red)),
-                                                onPressed: () {
-                                                  Navigator.pop(context);
-                                                  deleteTrip(trip['id']);
-                                                },
-                                              ),
-                                            ],
-                                          ),
-                                        );
-                                      },
-                                      icon: Icon(Icons.delete, size: 18),
-                                      label: Text("Delete"),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.red,
-                                        foregroundColor: Colors.white,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
+              child:
+                  filteredTrips.isEmpty
+                      ? Center(child: Text('No trips found'))
+                      : ListView.builder(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 10,
+                        ),
+                        itemCount: filteredTrips.length,
+                        itemBuilder: (context, index) {
+                          final trip = filteredTrips[index];
+                          return Card(
+                            margin: EdgeInsets.only(bottom: 15),
+                            elevation: 3,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
                             ),
-                          ),
-                        );
-                      },
-                    ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(15),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    trip['title'] ?? 'No Title',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  SizedBox(height: 5),
+                                  Text(
+                                    "Date: ${trip['date'] ?? '-'}\nPrice: \$${trip['price_per_person'] ?? '-'}",
+                                  ),
+                                  SizedBox(height: 10),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.end,
+                                    children: [
+                                      ElevatedButton.icon(
+                                        onPressed: () async {
+                                          final result = await Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder:
+                                                  (context) =>
+                                                      EditTripPage(trip: trip),
+                                            ),
+                                          );
+                                          if (result == true) {
+                                            fetchTrips(); // Refresh the list after editing
+                                          }
+                                        },
+
+                                        icon: Icon(Icons.edit, size: 18),
+                                        label: Text("Edit"),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.blue,
+                                          foregroundColor: Colors.white,
+                                        ),
+                                      ),
+                                      SizedBox(width: 10),
+                                      ElevatedButton.icon(
+                                        onPressed: () {
+                                          showDialog(
+                                            context: context,
+                                            builder:
+                                                (context) => AlertDialog(
+                                                  title: Text("Confirm Delete"),
+                                                  content: Text(
+                                                    "Are you sure you want to delete this trip?",
+                                                  ),
+                                                  actions: [
+                                                    TextButton(
+                                                      child: Text("Cancel"),
+                                                      onPressed:
+                                                          () => Navigator.pop(
+                                                            context,
+                                                          ),
+                                                    ),
+                                                    TextButton(
+                                                      child: Text(
+                                                        "Delete",
+                                                        style: TextStyle(
+                                                          color: Colors.red,
+                                                        ),
+                                                      ),
+                                                      onPressed: () {
+                                                        Navigator.pop(context);
+                                                        deleteTrip(trip['id']);
+                                                      },
+                                                    ),
+                                                  ],
+                                                ),
+                                          );
+                                        },
+                                        icon: Icon(Icons.delete, size: 18),
+                                        label: Text("Delete"),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.red,
+                                          foregroundColor: Colors.white,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
             ),
         ],
       ),
