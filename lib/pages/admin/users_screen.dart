@@ -1,5 +1,5 @@
 import 'package:cmc_travel_app/pages/admin/admin_screen.dart';
-import 'package:cmc_travel_app/pages/admin/notification_screen.dart';
+import 'package:cmc_travel_app/pages/admin/statestique_screen.dart';
 import 'package:cmc_travel_app/pages/admin/profile_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
@@ -13,6 +13,8 @@ class UsersScreen extends StatefulWidget {
 }
 
 class _UsersScreenState extends State<UsersScreen> {
+    final Color primaryColor = const Color(0xFF3AB796);
+  final Color secondaryColor = const Color(0xFF3AABB7);
   final supabase = Supabase.instance.client;
   List<dynamic> users = [];
   bool isLoading = true;
@@ -86,7 +88,7 @@ class _UsersScreenState extends State<UsersScreen> {
       case 2:
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => const NotificationScreen()),
+          MaterialPageRoute(builder: (_) => const StatestiquePage()),
         );
         break;
       case 3:
@@ -114,36 +116,31 @@ class _UsersScreenState extends State<UsersScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-  title: Center(
-    child: const Text(
-      'Users',
-      style: TextStyle(
-        fontSize: 22.0,
-        fontWeight: FontWeight.w700,
-        letterSpacing: 1.2,
-        color: Colors.white,
-        fontFamily: 'Poppins', // Ou 'Montserrat' si préféré
+        title: const Text(
+          'Users',
+          style: TextStyle(
+            fontSize: 20.0,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+        centerTitle: true,
+        backgroundColor: primaryColor,
+        elevation: 0,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(
+            bottom: Radius.circular(16),
+          ),
+        ),
+        toolbarHeight: 70,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.notifications, size: 26),
+            onPressed: () {},
+            color: Colors.white,
+          ),
+        ],
       ),
-    ),
-  ),
-  
-  centerTitle: true,
-  backgroundColor: const Color.fromARGB(255, 58, 183, 162), // Ou Colors.indigo[800]
-  elevation: 8,
-  shadowColor: const Color.fromARGB(255, 58, 183, 171).withOpacity(0.5),
-  shape: const RoundedRectangleBorder(
-    borderRadius: BorderRadius.vertical(
-      bottom: Radius.circular(15),
-    ),
-  ),
-  toolbarHeight: 70,
-  actions: [
-    IconButton(
-      icon: const Icon(Icons.notifications, size: 26),
-      onPressed: () {},
-    ),
-  ],
-),
       body:
           isLoading
               ? const Center(child: CircularProgressIndicator())
@@ -273,39 +270,45 @@ class _UsersScreenState extends State<UsersScreen> {
 );
                 },
               ),
-      bottomNavigationBar: Theme(
-        data: Theme.of(context).copyWith(
-          navigationBarTheme: NavigationBarThemeData(
-            indicatorColor: Colors.blue.withOpacity(0.1),
-            iconTheme: MaterialStateProperty.resolveWith<IconThemeData>((
-              states,
-            ) {
-              if (states.contains(MaterialState.selected)) {
-                return const IconThemeData(color: Colors.blue);
-              }
-              return const IconThemeData(color: Colors.grey);
-            }),
-            labelTextStyle: MaterialStateProperty.resolveWith<TextStyle>((
-              states,
-            ) {
-              if (states.contains(MaterialState.selected)) {
-                return const TextStyle(color: Colors.blue);
-              }
-              return const TextStyle(color: Colors.grey);
-            }),
-          ),
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.2),
+              spreadRadius: 2,
+              blurRadius: 10,
+              offset: const Offset(0, -3),
+            ),
+          ],
         ),
         child: NavigationBar(
+          height: 70,
           selectedIndex: _selectedIndex,
           onDestinationSelected: _navigate,
-          destinations: const [
-            NavigationDestination(icon: Icon(Icons.home), label: 'Home'),
-            NavigationDestination(icon: Icon(Icons.person_2), label: 'Users'),
+          backgroundColor: Colors.white,
+          indicatorColor: primaryColor.withOpacity(0.2),
+          labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+          destinations: [
             NavigationDestination(
-              icon: Icon(Icons.notifications),
-              label: 'Notification',
+              icon: Icon(Icons.home, color: Colors.grey[600]),
+              selectedIcon: Icon(Icons.home, color: primaryColor),
+              label: 'Accueil',
             ),
-            NavigationDestination(icon: Icon(Icons.person), label: 'Profile'),
+            NavigationDestination(
+              icon: Icon(Icons.people, color: Colors.grey[600]),
+              selectedIcon: Icon(Icons.people, color: primaryColor),
+              label: 'Utilisateurs',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.stacked_bar_chart_rounded, color: Colors.grey[600]),
+              selectedIcon: Icon(Icons.stacked_bar_chart_rounded, color: primaryColor),
+              label: 'Statestique',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.person, color: Colors.grey[600]),
+              selectedIcon: Icon(Icons.person, color: primaryColor),
+              label: 'Profil',
+            ),
           ],
         ),
       ),
