@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
+import 'dart:io';
 
 class EditTripPage extends StatefulWidget {
   final Map<String, dynamic> trip;
@@ -11,62 +14,105 @@ class EditTripPage extends StatefulWidget {
 }
 
 class _EditTripPageState extends State<EditTripPage> {
-  final TextEditingController _imgController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
-  final TextEditingController _typeController = TextEditingController();
-  final TextEditingController _dateController = TextEditingController();
   final TextEditingController _priceController = TextEditingController();
   final TextEditingController _seatsController = TextEditingController();
-  final TextEditingController _statusController = TextEditingController();
-  final TextEditingController _programController = TextEditingController();
+  final TextEditingController _dateController = TextEditingController();
 
   DateTime? _selectedDate;
+  File? _image;
+  String? _programPath;
+  String? _type;
+  String? _status;
+
+  final List<String> _types = [
+    'City/site tour',
+    'Event/Festival',
+    'Sports/Cultural activity',
+  ];
+
+  final List<String> _statuses = [
+    'Available',
+    'Closed',
+    'Pending',
+    'rejected',
+    'accepted'
+  ];
 
   @override
   void initState() {
     super.initState();
-    _imgController.text = widget.trip['img'] ?? '';
     _titleController.text = widget.trip['title'] ?? '';
     _descriptionController.text = widget.trip['description'] ?? '';
-    _typeController.text = widget.trip['type'] ?? '';
+    _type = widget.trip['type'];
+    _status = widget.trip['status'];
     _priceController.text = widget.trip['price_per_person']?.toString() ?? '';
     _seatsController.text = widget.trip['seats']?.toString() ?? '';
-    _statusController.text = widget.trip['status'] ?? '';
-    _programController.text = widget.trip['program'] ?? '';
+    _programPath = widget.trip['program'];
 
-    _selectedDate = DateTime.tryParse(widget.trip['date']);
+    _selectedDate = DateTime.tryParse(widget.trip['date'] ?? '');
     _dateController.text = _selectedDate != null
         ? _selectedDate!.toIso8601String().split('T').first
         : '';
+
+    // Load image from file path if exists
+    final imgPath = widget.trip['img'];
+    if (imgPath != null && File(imgPath).existsSync()) {
+      _image = File(imgPath);
+    }
   }
 
-  @override
-  void dispose() {
-    _imgController.dispose();
-    _titleController.dispose();
-    _descriptionController.dispose();
-    _typeController.dispose();
-    _dateController.dispose();
-    _priceController.dispose();
-    _seatsController.dispose();
-    _statusController.dispose();
-    _programController.dispose();
-    super.dispose();
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: ImageSource.gallery);
+    if (picked != null) {
+      setState(() {
+        _image = File(picked.path);
+      });
+    }
+  }
+
+  Future<void> _pickPDF() async {
+    final result = await FilePicker.platform
+        .pickFiles(type: FileType.custom, allowedExtensions: ['pdf']);
+    if (result != null) {
+      setState(() {
+        _programPath = result.files.single.path;
+      });
+    }
+  }
+
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate ?? DateTime.now(),
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+    );
+    if (picked != null) {
+      setState(() {
+        _selectedDate = picked;
+        _dateController.text =
+            "${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}";
+      });
+    }
   }
 
   Future<void> _updateTrip() async {
     try {
       await Supabase.instance.client.from('Voyage').update({
-        'img': _imgController.text,
+        'image_url': _image?.path ?? widget.trip['img'],
         'title': _titleController.text,
         'description': _descriptionController.text,
-        'type': _typeController.text,
+        'type': _type,
         'date': _selectedDate?.toIso8601String().split('T').first,
         'price_per_person': double.tryParse(_priceController.text),
-        'seats': int.tryParse(_seatsController.text),
-        'status': _statusController.text,
-        'program': _programController.text,
+        'nbr_places': int.tryParse(_seatsController.text),
+        'status': _status,
+        'program_url': _programPath,
       }).eq('id', widget.trip['id']);
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -89,23 +135,37 @@ class _EditTripPageState extends State<EditTripPage> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Edit Trip')),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: SingleChildScrollView(
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Form(
+          key: _formKey,
           child: Column(
             children: [
-              // Image URL
-              TextFormField(
-                controller: _imgController,
-                decoration: InputDecoration(
-                  labelText: 'Image URL',
-                  border: border,
-                  enabledBorder: border,
+              Center(
+                  child: GestureDetector(
+                    onTap: _pickImage,
+                    child: Container(
+                      height: 180,
+                      width: 180,
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.black45, width: 2.0),
+                        borderRadius: BorderRadius.circular(20),
+                        image:
+                            _image != null
+                                ? DecorationImage(
+                                  image: FileImage(_image!),
+                                  fit: BoxFit.cover,
+                                )
+                                : null,
+                      ),
+                      child:
+                          _image == null
+                              ? const Icon(Icons.camera_alt_outlined, size: 40)
+                              : null,
+                    ),
+                  ),
                 ),
-              ),
               const SizedBox(height: 16),
-
-              // Title
               TextFormField(
                 controller: _titleController,
                 decoration: InputDecoration(
@@ -115,8 +175,6 @@ class _EditTripPageState extends State<EditTripPage> {
                 ),
               ),
               const SizedBox(height: 16),
-
-              // Description
               TextFormField(
                 controller: _descriptionController,
                 maxLines: 3,
@@ -127,19 +185,20 @@ class _EditTripPageState extends State<EditTripPage> {
                 ),
               ),
               const SizedBox(height: 16),
-
-              // Type
-              TextFormField(
-                controller: _typeController,
+              DropdownButtonFormField<String>(
+                value: _type,
                 decoration: InputDecoration(
                   labelText: 'Type',
                   border: border,
                   enabledBorder: border,
                 ),
+                items: _types
+                    .map((type) =>
+                        DropdownMenuItem(value: type, child: Text(type)))
+                    .toList(),
+                onChanged: (value) => setState(() => _type = value),
               ),
               const SizedBox(height: 16),
-
-              // Date (read only with picker)
               TextFormField(
                 controller: _dateController,
                 readOnly: true,
@@ -148,25 +207,9 @@ class _EditTripPageState extends State<EditTripPage> {
                   border: border,
                   enabledBorder: border,
                 ),
-                onTap: () async {
-                  final picked = await showDatePicker(
-                    context: context,
-                    initialDate: _selectedDate ?? DateTime.now(),
-                    firstDate: DateTime(2000),
-                    lastDate: DateTime(2100),
-                  );
-                  if (picked != null) {
-                    setState(() {
-                      _selectedDate = picked;
-                      _dateController.text =
-                          picked.toIso8601String().split('T').first;
-                    });
-                  }
-                },
+                onTap: _pickDate,
               ),
               const SizedBox(height: 16),
-
-              // Price per person
               TextFormField(
                 controller: _priceController,
                 keyboardType: TextInputType.number,
@@ -177,8 +220,6 @@ class _EditTripPageState extends State<EditTripPage> {
                 ),
               ),
               const SizedBox(height: 16),
-
-              // Seats
               TextFormField(
                 controller: _seatsController,
                 keyboardType: TextInputType.number,
@@ -189,31 +230,30 @@ class _EditTripPageState extends State<EditTripPage> {
                 ),
               ),
               const SizedBox(height: 16),
-
-              // Status
-              TextFormField(
-                controller: _statusController,
+              DropdownButtonFormField<String>(
+                value: _status,
                 decoration: InputDecoration(
                   labelText: 'Status',
                   border: border,
                   enabledBorder: border,
                 ),
+                items: _statuses
+                    .map((status) =>
+                        DropdownMenuItem(value: status, child: Text(status)))
+                    .toList(),
+                onChanged: (value) => setState(() => _status = value),
               ),
               const SizedBox(height: 16),
-
-              // Program
-              TextFormField(
-                controller: _programController,
-                maxLines: 3,
-                decoration: InputDecoration(
-                  labelText: 'Program',
-                  border: border,
-                  enabledBorder: border,
+              ListTile(
+                title: Text(
+                  _programPath == null
+                      ? 'Select PDF Program'
+                      : _programPath!.split('/').last,
                 ),
+                trailing: const Icon(Icons.attach_file),
+                onTap: _pickPDF,
               ),
               const SizedBox(height: 32),
-
-              // Save Button
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
