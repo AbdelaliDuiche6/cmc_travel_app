@@ -102,12 +102,13 @@ class _AdminScreenState extends State<AdminScreen> {
   }
 
   void _previewVoyage(dynamic voyage) {
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+  showDialog(
+    context: context,
+    builder: (context) => Dialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(20.0),
           child: Column(
@@ -117,12 +118,14 @@ class _AdminScreenState extends State<AdminScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    voyage['title'],
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: primaryColor,
+                  Expanded(
+                    child: Text(
+                      voyage['title'],
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: primaryColor,
+                      ),
                     ),
                   ),
                   IconButton(
@@ -132,6 +135,51 @@ class _AdminScreenState extends State<AdminScreen> {
                 ],
               ),
               const SizedBox(height: 16),
+              
+              // Ajout de l'image en haut du dialogue
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  height: 180,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[200],
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: voyage['image_url'] != null && voyage['image_url'].isNotEmpty
+                      ? Image.network(
+                          voyage['image_url'],
+                          fit: BoxFit.cover,
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            return Center(
+                              child: CircularProgressIndicator(
+                                value: loadingProgress.expectedTotalBytes != null
+                                    ? loadingProgress.cumulativeBytesLoaded /
+                                        loadingProgress.expectedTotalBytes!
+                                    : null,
+                              ),
+                            );
+                          },
+                          errorBuilder: (context, error, stackTrace) => Center(
+                            child: Icon(
+                              Icons.image_not_supported,
+                              color: Colors.grey[400],
+                              size: 40,
+                            ),
+                          ),
+                        )
+                      : Center(
+                          child: Icon(
+                            Icons.photo_camera,
+                            color: Colors.grey[400],
+                            size: 40,
+                          ),
+                        ),
+                ),
+              ),
+              const SizedBox(height: 16),
+
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
@@ -197,8 +245,9 @@ class _AdminScreenState extends State<AdminScreen> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildVoyageCard(dynamic voyage, int index) {
     return Card(
@@ -218,15 +267,33 @@ class _AdminScreenState extends State<AdminScreen> {
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(10),
+                    width: 150,
+                    height: 150,
                     decoration: BoxDecoration(
-                      color: primaryColor.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12),
+                      color: Colors.grey[200],
                     ),
-                    child: Icon(
-                      Icons.airplanemode_active,
-                      color: primaryColor,
-                      size: 28,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.network(
+                      voyage['image_url'] ,
+                        fit: BoxFit.cover,
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return Center(
+                            child: CircularProgressIndicator(
+                              value: loadingProgress.expectedTotalBytes != null
+                                  ? loadingProgress.cumulativeBytesLoaded /
+                                      loadingProgress.expectedTotalBytes!
+                                  : null,
+                            ),
+                          );
+                        },
+                        errorBuilder: (context, error, stackTrace) => Icon(
+                          Icons.image_not_supported,
+                          color: Colors.grey[400],
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
