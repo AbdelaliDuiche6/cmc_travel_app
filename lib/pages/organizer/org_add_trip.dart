@@ -2,6 +2,8 @@ import 'package:cmc_travel_app/models/Trip.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:path/path.dart' as path;
 
 class AddTripPage extends StatefulWidget {
   const AddTripPage({super.key});
@@ -12,12 +14,15 @@ class AddTripPage extends StatefulWidget {
 
 class _AddTripPageState extends State<AddTripPage> {
   final _formKey = GlobalKey<FormState>();
+  final _supabase = Supabase.instance.client;
+  final String _bucketName = 'trip-images';
 
   String? _type;
   String? _status;
   DateTime? _date;
   File? _image;
   String? _programUrl;
+  bool _isUploading = false;
 
   final _titleController = TextEditingController();
   final _descController = TextEditingController();
@@ -25,12 +30,10 @@ class _AddTripPageState extends State<AddTripPage> {
   final _seatsController = TextEditingController();
   final _dateController = TextEditingController();
 
-  // Hardcoded list of school holidays (example)
   final List<DateTime> schoolHolidays = [
     DateTime(2025, 5, 24),
     DateTime(2025, 1, 1),
     DateTime(2025, 4, 20),
-    // Add your holiday dates here
   ];
 
   bool _isWeekend(DateTime date) {
@@ -47,13 +50,21 @@ class _AddTripPageState extends State<AddTripPage> {
   }
 
   Future<void> _pickDate() async {
+    DateTime now = DateTime.now();
+    DateTime initial = now;
+
+    while (!_isWeekend(initial) && !_isHoliday(initial)) {
+      initial = initial.add(const Duration(days: 1));
+    }
+
     final picked = await showDatePicker(
       context: context,
-      initialDate: DateTime.now(),
+      initialDate: initial,
       firstDate: DateTime(2020),
       lastDate: DateTime(2100),
       selectableDayPredicate: (date) => _isWeekend(date) || _isHoliday(date),
     );
+
     if (picked != null) {
       setState(() {
         _date = picked;
@@ -76,55 +87,110 @@ class _AddTripPageState extends State<AddTripPage> {
     }
   }
 
+  Future<String?> _uploadImage() async {
+    if (_image == null) return null;
+
+    try {
+      final fileExtension = path.extension(_image!.path);
+      final fileName =
+          'trip_${DateTime.now().millisecondsSinceEpoch}$fileExtension';
+
+      await _supabase.storage.from(_bucketName).upload(fileName, _image!);
+
+      return _supabase.storage.from(_bucketName).getPublicUrl(fileName);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Image upload failed: ${e.toString()}')),
+      );
+      return null;
+    }
+  }
+
   void _downloadProgram() {
     setState(() {
-      _programUrl = "https://example.com/program.pdf"; // Placeholder
+      _programUrl = "https://example.com/program.pdf";
     });
-
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text("Program downloaded")));
   }
 
-  void _publish() {
-    if (_formKey.currentState!.validate()) {
-      print("Selected date: $_date");
-      print("Is weekend? ${_date != null ? _isWeekend(_date!) : 'null date'}");
-      print("Is holiday? ${_date != null ? _isHoliday(_date!) : 'null date'}");
+  Future<void> _publish() async {
+    if (!_formKey.currentState!.validate()) return;
 
-      if (_date == null || (!_isWeekend(_date!) && !_isHoliday(_date!))) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Selected date must be a weekend or a school holiday',
-            ),
-          ),
-        );
-        return; // Stop publishing
+    if (_date == null || (!_isWeekend(_date!) && !_isHoliday(_date!))) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Date must be weekend or holiday')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isUploading = true;
+    });
+
+    try {
+      // Upload image first
+      String? imageUrl;
+      if (_image != null) {
+        imageUrl = await _uploadImage();
+        if (imageUrl == null) return;
       }
 
-      final String organizerId = "current-user-id-123"; // Simulated user ID
+      // Get current user ID
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Authentication required')),
+        );
+        return;
+      }
 
-      final trip = Trip(
-        title: _titleController.text,
-        description: _descController.text,
-        type: _type!,
-        date: _date!,
-        price: _priceController.text,
-        seats: _seatsController.text,
-        status: _status!,
-        image: _image,
-        programUrl: _programUrl,
-        organizerId: organizerId,
-      );
-
-      print("Trip Published: ${trip.title}");
+      // Insert trip data into database
+      // Insert trip data into database
+      await _supabase.from('Voyage').insert({
+        'title': _titleController.text,
+        'description': _descController.text,
+        'type': _type!,
+        'date': _date!.toIso8601String(),
+        'price_per_person': double.parse(
+          _priceController.text,
+        ), // Changed to match table and converted to float
+        'nbr_places': int.parse(
+          _seatsController.text,
+        ), // Changed to match table
+        'status': _status!,
+        'image_url': imageUrl,
+        'program_url': _programUrl,
+        'organizer_id': userId,
+      });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Trip Published (simulated)")),
+        const SnackBar(content: Text("Trip published successfully!")),
       );
 
-      // TODO: Submit trip data to backend
+      // Reset form
+      _formKey.currentState!.reset();
+      setState(() {
+        _image = null;
+        _date = null;
+        _type = null;
+        _status = null;
+        _programUrl = null;
+        _titleController.clear();
+        _descController.clear();
+        _priceController.clear();
+        _seatsController.clear();
+        _dateController.clear();
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Publishing failed: ${e.toString()}')),
+      );
+    } finally {
+      setState(() {
+        _isUploading = false;
+      });
     }
   }
 
@@ -145,7 +211,6 @@ class _AddTripPageState extends State<AddTripPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Image Picker
                 Center(
                   child: GestureDetector(
                     onTap: _pickImage,
@@ -171,8 +236,6 @@ class _AddTripPageState extends State<AddTripPage> {
                   ),
                 ),
                 const SizedBox(height: 20),
-
-                // Title
                 TextFormField(
                   controller: _titleController,
                   decoration: InputDecoration(
@@ -185,8 +248,6 @@ class _AddTripPageState extends State<AddTripPage> {
                           value == null || value.isEmpty ? 'Required' : null,
                 ),
                 const SizedBox(height: 12),
-
-                // Description
                 TextFormField(
                   controller: _descController,
                   decoration: InputDecoration(
@@ -199,8 +260,6 @@ class _AddTripPageState extends State<AddTripPage> {
                           value == null || value.isEmpty ? 'Required' : null,
                 ),
                 const SizedBox(height: 12),
-
-                // Type Dropdown
                 DropdownButtonFormField<String>(
                   decoration: InputDecoration(
                     labelText: "Type",
@@ -225,10 +284,7 @@ class _AddTripPageState extends State<AddTripPage> {
                   validator:
                       (value) => value == null ? 'Please select a type' : null,
                 ),
-
                 const SizedBox(height: 12),
-
-                // Start Date
                 TextFormField(
                   controller: _dateController,
                   readOnly: true,
@@ -239,19 +295,15 @@ class _AddTripPageState extends State<AddTripPage> {
                   ),
                   onTap: _pickDate,
                   validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Required';
-                    }
+                    if (value == null || value.isEmpty) return 'Required';
                     if (_date == null ||
                         (!_isWeekend(_date!) && !_isHoliday(_date!))) {
-                      return 'Date must be a weekend or school holiday';
+                      return 'Must be weekend or holiday';
                     }
                     return null;
                   },
                 ),
                 const SizedBox(height: 12),
-
-                // Price and Seats
                 Row(
                   children: [
                     Expanded(
@@ -290,8 +342,6 @@ class _AddTripPageState extends State<AddTripPage> {
                   ],
                 ),
                 const SizedBox(height: 12),
-
-                // Status Dropdown
                 DropdownButtonFormField<String>(
                   decoration: InputDecoration(
                     labelText: "Status",
@@ -314,8 +364,6 @@ class _AddTripPageState extends State<AddTripPage> {
                           value == null ? 'Please select a status' : null,
                 ),
                 const SizedBox(height: 20),
-
-                // Download Button
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
@@ -328,17 +376,22 @@ class _AddTripPageState extends State<AddTripPage> {
                   ),
                 ),
                 const SizedBox(height: 20),
-
-                // Publish Button
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: _publish,
+                    onPressed: _isUploading ? null : _publish,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.black,
                       foregroundColor: Colors.white,
                     ),
-                    child: const Text("Publish"),
+                    child:
+                        _isUploading
+                            ? const CircularProgressIndicator(
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.white,
+                              ),
+                            )
+                            : const Text("Publish"),
                   ),
                 ),
               ],
