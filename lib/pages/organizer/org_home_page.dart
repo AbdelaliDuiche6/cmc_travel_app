@@ -3,6 +3,7 @@ import 'package:cmc_travel_app/pages/organizer/org_edit_trip.dart';
 import 'package:cmc_travel_app/pages/organizer/org_profile_page.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:intl/intl.dart';
 
 class OrgHomePage extends StatefulWidget {
   const OrgHomePage({super.key});
@@ -240,94 +241,176 @@ class _OrgHomePageState extends State<OrgHomePage> {
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            child: Padding(
-                              padding: const EdgeInsets.all(15),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    trip['title'] ?? 'No Title',
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                    ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Image Container
+                                ClipRRect(
+                                  borderRadius: BorderRadius.vertical(
+                                    top: Radius.circular(12),
                                   ),
-                                  SizedBox(height: 5),
-                                  Text(
-                                    "Date: ${trip['date'] ?? '-'}\nPrice: \$${trip['price_per_person'] ?? '-'}",
-                                  ),
-                                  SizedBox(height: 10),
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.end,
-                                    children: [
-                                      ElevatedButton.icon(
-                                        onPressed: () async {
-                                          final result = await Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder:
-                                                  (context) =>
-                                                      EditTripPage(trip: trip),
+                                  child: Container(
+                                    height: 150,
+                                    width: double.infinity,
+                                    color: Colors.grey[200],
+                                    child:
+                                        trip['image_url'] != null
+                                            ? Image.network(
+                                              trip['image_url'],
+                                              fit: BoxFit.cover,
+                                              errorBuilder: (
+                                                context,
+                                                error,
+                                                stackTrace,
+                                              ) {
+                                                return Center(
+                                                  child: Icon(
+                                                    Icons.broken_image,
+                                                    size: 50,
+                                                  ),
+                                                );
+                                              },
+                                            )
+                                            : Center(
+                                              child: Icon(
+                                                Icons.photo,
+                                                size: 50,
+                                                color: Colors.grey,
+                                              ),
                                             ),
-                                          );
-                                          if (result == true) {
-                                            fetchTrips(); // Refresh the list after editing
-                                          }
-                                        },
-
-                                        icon: Icon(Icons.edit, size: 18),
-                                        label: Text("Edit"),
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: Colors.blue,
-                                          foregroundColor: Colors.white,
+                                  ),
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.all(15),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        trip['title'] ?? 'No Title',
+                                        style: TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
                                         ),
                                       ),
-                                      SizedBox(width: 10),
-                                      ElevatedButton.icon(
-                                        onPressed: () {
-                                          showDialog(
-                                            context: context,
-                                            builder:
-                                                (context) => AlertDialog(
-                                                  title: Text("Confirm Delete"),
-                                                  content: Text(
-                                                    "Are you sure you want to delete this trip?",
-                                                  ),
-                                                  actions: [
-                                                    TextButton(
-                                                      child: Text("Cancel"),
-                                                      onPressed:
-                                                          () => Navigator.pop(
-                                                            context,
-                                                          ),
+                                      SizedBox(height: 8),
+                                      Row(
+                                        children: [
+                                          Icon(Icons.calendar_today, size: 16),
+                                          SizedBox(width: 5),
+                                          Text(
+                                            trip['date'] != null
+                                                ? DateFormat(
+                                                  'MMM dd, yyyy',
+                                                ).format(
+                                                  DateTime.parse(trip['date']),
+                                                )
+                                                : '-',
+                                          ),
+                                        ],
+                                      ),
+                                      SizedBox(height: 5),
+                                      Row(
+                                        children: [
+                                          Icon(Icons.attach_money, size: 16),
+                                          SizedBox(width: 5),
+                                          Text(
+                                            '\$${trip['price_per_person']?.toStringAsFixed(2) ?? '-'}',
+                                          ),
+                                        ],
+                                      ),
+                                      SizedBox(height: 5),
+                                      Row(
+                                        children: [
+                                          Icon(Icons.people, size: 16),
+                                          SizedBox(width: 5),
+                                          Text(
+                                            '${trip['free_places'] ?? '-'}/${trip['nbr_places'] ?? '-'} seats left',
+                                          ),
+                                        ],
+                                      ),
+                                      SizedBox(height: 10),
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.end,
+                                        children: [
+                                          ElevatedButton.icon(
+                                            onPressed: () async {
+                                              final result =
+                                                  await Navigator.push(
+                                                    context,
+                                                    MaterialPageRoute(
+                                                      builder:
+                                                          (context) =>
+                                                              EditTripPage(
+                                                                trip: trip,
+                                                              ),
                                                     ),
-                                                    TextButton(
-                                                      child: Text(
-                                                        "Delete",
-                                                        style: TextStyle(
-                                                          color: Colors.red,
-                                                        ),
+                                                  );
+                                              if (result == true) fetchTrips();
+                                            },
+                                            icon: Icon(Icons.edit, size: 18),
+                                            label: Text("Edit"),
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: Colors.blue,
+                                              foregroundColor: Colors.white,
+                                            ),
+                                          ),
+                                          SizedBox(width: 10),
+                                          ElevatedButton.icon(
+                                            onPressed: () {
+                                              showDialog(
+                                                context: context,
+                                                builder:
+                                                    (context) => AlertDialog(
+                                                      title: Text(
+                                                        "Confirm Delete",
                                                       ),
-                                                      onPressed: () {
-                                                        Navigator.pop(context);
-                                                        deleteTrip(trip['id']);
-                                                      },
+                                                      content: Text(
+                                                        "Are you sure you want to delete this trip?",
+                                                      ),
+                                                      actions: [
+                                                        TextButton(
+                                                          child: Text("Cancel"),
+                                                          onPressed:
+                                                              () =>
+                                                                  Navigator.pop(
+                                                                    context,
+                                                                  ),
+                                                        ),
+                                                        TextButton(
+                                                          child: Text(
+                                                            "Delete",
+                                                            style: TextStyle(
+                                                              color: Colors.red,
+                                                            ),
+                                                          ),
+                                                          onPressed: () {
+                                                            Navigator.pop(
+                                                              context,
+                                                            );
+                                                            deleteTrip(
+                                                              trip['id'],
+                                                            );
+                                                          },
+                                                        ),
+                                                      ],
                                                     ),
-                                                  ],
-                                                ),
-                                          );
-                                        },
-                                        icon: Icon(Icons.delete, size: 18),
-                                        label: Text("Delete"),
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: Colors.red,
-                                          foregroundColor: Colors.white,
-                                        ),
+                                              );
+                                            },
+                                            icon: Icon(Icons.delete, size: 18),
+                                            label: Text("Delete"),
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: Colors.red,
+                                              foregroundColor: Colors.white,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ],
                                   ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
                           );
                         },
