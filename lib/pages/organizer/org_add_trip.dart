@@ -88,23 +88,33 @@ class _AddTripPageState extends State<AddTripPage> {
   }
 
   Future<String?> _uploadImage() async {
-    if (_image == null) return null;
+  if (_image == null) return null;
 
-    try {
-      final fileExtension = path.extension(_image!.path);
-      final fileName =
-          'trip_${DateTime.now().millisecondsSinceEpoch}$fileExtension';
+  try {
+    final fileExtension = path.extension(_image!.path);
+    final fileName = 'trip_${DateTime.now().millisecondsSinceEpoch}$fileExtension';
 
-      await _supabase.storage.from(_bucketName).upload(fileName, _image!);
+    // Upload the file
+    await _supabase.storage.from(_bucketName).upload(
+      fileName,
+      _image!,
+      fileOptions: FileOptions(
+        cacheControl: '3600',
+        upsert: false,
+      ),
+    );
 
-      return _supabase.storage.from(_bucketName).getPublicUrl(fileName);
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Image upload failed: ${e.toString()}')),
-      );
-      return null;
-    }
+    // Get the public URL - this assumes your bucket has public permissions
+    final imageUrl = _supabase.storage.from(_bucketName).getPublicUrl(fileName);
+    
+    return imageUrl;
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Image upload failed: ${e.toString()}')),
+    );
+    return null;
   }
+}
 
   void _downloadProgram() {
     setState(() {
