@@ -536,42 +536,52 @@ class _AdminScreenState extends State<AdminScreen> {
         decoration: BoxDecoration(
           boxShadow: [
             BoxShadow(
-              color: Colors.grey.withOpacity(0.2),
-              spreadRadius: 2,
+              color: Colors.grey.withOpacity(0.1),
+              spreadRadius: 1,
               blurRadius: 10,
-              offset: const Offset(0, -3),
-            ),
+              offset: const Offset(0, -2),)
           ],
+          borderRadius: const BorderRadius.vertical(
+            top: Radius.circular(20),
+          ),
         ),
-        child: NavigationBar(
-          height: 70,
-          selectedIndex: _selectedIndex,
-          onDestinationSelected: _navigate,
-          backgroundColor: Colors.white,
-          indicatorColor: primaryColor.withOpacity(0.2),
-          labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-          destinations: [
-            NavigationDestination(
-              icon: Icon(Icons.home, color: Colors.grey[600]),
-              selectedIcon: Icon(Icons.home, color: primaryColor),
-              label: 'Accueil',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.people, color: Colors.grey[600]),
-              selectedIcon: Icon(Icons.people, color: primaryColor),
-              label: 'Utilisateurs',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.stacked_bar_chart_rounded, color: Colors.grey[600]),
-              selectedIcon: Icon(Icons.stacked_bar_chart_rounded, color: primaryColor),
-              label: 'Statestique',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.person, color: Colors.grey[600]),
-              selectedIcon: Icon(Icons.person, color: primaryColor),
-              label: 'Profil',
-            ),
-          ],
+        child: ClipRRect(
+          borderRadius: const BorderRadius.vertical(
+            top: Radius.circular(20),
+          ),
+          child: NavigationBar(
+            height: 70,
+            selectedIndex: _selectedIndex,
+            onDestinationSelected: _navigate,
+            backgroundColor: Colors.white,
+            indicatorColor: primaryColor.withOpacity(0.2),
+            labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+            animationDuration: const Duration(milliseconds: 300),
+            destinations: [
+              NavigationDestination(
+                icon: Icon(Icons.home_outlined, color: Colors.grey[600]),
+                selectedIcon: Icon(Icons.home, color: primaryColor),
+                label: 'Home',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.people_outline, color: Colors.grey[600]),
+                selectedIcon: Icon(Icons.people, color: primaryColor),
+                label: 'Users',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.bar_chart_outlined,
+                    color: Colors.grey[600]),
+                selectedIcon:
+                    Icon(Icons.bar_chart, color: primaryColor),
+                label: 'Stats',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.person_outline, color: Colors.grey[600]),
+                selectedIcon: Icon(Icons.person, color: primaryColor),
+                label: 'Profile',
+              ),
+            ],
+          ),
         ),
       ),
     );
