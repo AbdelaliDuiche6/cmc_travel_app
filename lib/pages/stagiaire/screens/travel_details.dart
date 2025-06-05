@@ -3,9 +3,24 @@ import 'package:flutter/material.dart';
 import 'package:cmc_travel_app/constants.dart';
 
 import '../components/back_button.dart';
+import '../widgets/payment.dart';
 
-class TravelDetails extends StatelessWidget {
+class TravelDetails extends StatefulWidget {
   const TravelDetails({super.key});
+
+  @override
+  State<TravelDetails> createState() => _TravelDetailsState();
+}
+
+class _TravelDetailsState extends State<TravelDetails> {
+  void _openPaymentOverlay() {
+    showModalBottomSheet(
+      context: context,
+      isDismissible: true,
+      // shape: ,
+      builder: (ctx) => Payment(),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -20,7 +35,18 @@ class TravelDetails extends StatelessWidget {
                 children: [
                   Padding(
                     padding: const EdgeInsets.all(8.0),
-                    child: Image.asset('assets/images/travel.png'),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        boxShadow: [
+                          BoxShadow(
+                            blurRadius: 60,
+                            color: Colors.black.withAlpha(150),
+                            offset: Offset(0, 20),
+                          ),
+                        ],
+                      ),
+                      child: Image.asset('assets/images/travel.png'),
+                    ),
                   ),
                   CustomBackButton(
                     backgroundColor: Colors.white,
@@ -134,7 +160,7 @@ class TravelDetails extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   TextButton(
-                    onPressed: () => {},
+                    onPressed: _openPaymentOverlay,
                     style: TextButton.styleFrom(
                       backgroundColor: kPrimaryColor,
                       foregroundColor: Colors.white,
