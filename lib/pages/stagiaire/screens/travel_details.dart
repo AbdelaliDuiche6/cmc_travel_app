@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:cmc_travel_app/constants.dart';
 
-import 'components/back_button.dart';
+import '../components/back_button.dart';
 
 class TravelDetails extends StatelessWidget {
   const TravelDetails({super.key});

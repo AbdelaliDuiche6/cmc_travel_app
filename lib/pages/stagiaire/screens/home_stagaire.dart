@@ -1,11 +1,11 @@
-import 'package:cmc_travel_app/pages/stagiaire/travel_details.dart';
+import 'package:cmc_travel_app/pages/stagiaire/screens/travel_details.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 
-import '../../constants.dart';
-import '../../models/travel.dart';
-import 'components/filter_option.dart';
-import 'components/travel_card.dart';
+import '../../../constants.dart';
+import '../../../models/travel.dart';
+import '../components/filter_option.dart';
+import '../widgets/travel_card.dart';
 
 class HomeStagaire extends StatefulWidget {
   const HomeStagaire({super.key});

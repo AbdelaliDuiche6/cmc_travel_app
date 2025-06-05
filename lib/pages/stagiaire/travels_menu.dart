@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 
+// import 'widgets/travel_card.dart';
+
 class Travel {
   final String name;
   final String location;

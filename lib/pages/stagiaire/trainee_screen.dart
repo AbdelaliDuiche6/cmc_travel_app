@@ -1,7 +1,7 @@
-import 'package:cmc_travel_app/pages/stagiaire/home_stagaire.dart';
-import 'package:cmc_travel_app/pages/stagiaire/notifications_stagiare.dart';
-import 'package:cmc_travel_app/pages/stagiaire/profile_stagiaire.dart';
-import 'package:cmc_travel_app/pages/stagiaire/trips_stagiaire.dart';
+import 'package:cmc_travel_app/pages/stagiaire/screens/home_stagaire.dart';
+import 'package:cmc_travel_app/pages/stagiaire/screens/notifications_stagiare.dart';
+import 'package:cmc_travel_app/pages/stagiaire/screens/profile_stagiaire.dart';
+import 'package:cmc_travel_app/pages/stagiaire/screens/trips_stagiaire.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
