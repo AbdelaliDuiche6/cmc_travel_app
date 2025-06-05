@@ -16,12 +16,10 @@ class HomeStagaire extends StatefulWidget {
 
 class _HomeStagaireState extends State<HomeStagaire> {
   final List<Travel> travels = [
-    Travel("Jemaa el-Fnaa", "Marrakesh", "assets/images/gmail.svg", 4.5),
-    Travel("Marina", "Agadir", "assets/images/gmail.svg", 4.5),
-    Travel("Hassan II Mosque", "Casablanca", "assets/images/gmail.svg", 4.5),
-    Travel("Ait Benhaddou", "Ouarzazate", "assets/images/gmail.svg", 4.5),
-    Travel("Ait Benhaddou", "Ouarzazate", "assets/images/gmail.svg", 4.5),
-    Travel("Ait Benhaddou", "Ouarzazate", "assets/images/gmail.svg", 4.5),
+    Travel("Akchor", "North", "assets/images/travel.png", 4.5),
+    Travel("Marina", "Agadir", "assets/images/travel.png", 4.5),
+    Travel("Hassan", "Rabat", "assets/images/travel.png", 4.5),
+    Travel("Kasbah", "Agadir", "assets/images/travel.png", 4.5),
   ];
 
   @override
@@ -60,11 +58,11 @@ class _HomeStagaireState extends State<HomeStagaire> {
               ),
               itemBuilder: (context, index) {
                 return TravelCard(
-                  size: size,
+                  size: size * 0.8,
                   travel: travels[index],
                   onPress:
                       () => {
-                        Navigator.pushReplacement(
+                        Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (context) => TravelDetails(),

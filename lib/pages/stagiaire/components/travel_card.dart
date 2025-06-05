@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-import 'package:flutter_svg/flutter_svg.dart';
-
 import 'package:cmc_travel_app/constants.dart';
 import '../../../models/travel.dart';
 
@@ -19,12 +17,12 @@ class TravelCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: EdgeInsets.only(left: kDefaultPadding),
-      width: size.width * 0.5,
+    return SizedBox(
+      // margin: EdgeInsets.only(left: kDefaultPadding),
+      // width: size.width * 0.7,
       child: Column(
         children: [
-          SvgPicture.asset(travel.imagePath),
+          Image.asset(travel.imagePath),
           GestureDetector(
             onTap: onPress,
             child: Container(
@@ -45,24 +43,35 @@ class TravelCard extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  RichText(
-                    text: TextSpan(
-                      children: [
-                        TextSpan(
-                          text: "${travel.name}\n".toUpperCase(),
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        TextSpan(
-                          text: travel.location.toUpperCase(),
-                          style: TextStyle(color: kPrimaryColor.withAlpha(150)),
-                        ),
-                      ],
+                  Expanded(
+                    child: RichText(
+                      text: TextSpan(
+                        children: [
+                          TextSpan(
+                            text: "${travel.name}\n".toUpperCase(),
+                            style: TextStyle(
+                              color: Colors.black,
+                              // overflow: TextOverflow.ellipsis,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          TextSpan(
+                            text: travel.location.toUpperCase(),
+                            style: TextStyle(
+                              color: kPrimaryColor.withAlpha(150),
+                              overflow: TextOverflow.ellipsis,
+                              fontSize: 10,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                   Spacer(),
                   Icon(Icons.star_rounded, color: Colors.yellow),
                   Text(
-                    '\$${travel.rating}',
+                    '${travel.rating}',
                     style: Theme.of(
                       context,
                     ).textTheme.labelLarge!.copyWith(color: kPrimaryColor),
