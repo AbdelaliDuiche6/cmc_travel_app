@@ -13,6 +13,7 @@ class _OrgProfilePageState extends State<OrgProfilePage> {
   String email = '';
   String phone = '';
   String createdAt = '';
+  String profilePictureUrl = '';
   int tripCount = 0;
   bool isLoading = true;
 
@@ -46,16 +47,38 @@ class _OrgProfilePageState extends State<OrgProfilePage> {
           .select()
           .eq('organizer_id', userId);
 
+      // Get profile picture path and generate URL
+      final picturePath = profileResponse['image_url'];
+      String finalProfilePicUrl = '';
+      
+      if (picturePath != null && picturePath.isNotEmpty) {
+        try {
+          // Generate the public URL
+          finalProfilePicUrl = Supabase.instance.client.storage
+              .from('profile-images')
+              .getPublicUrl(picturePath);
+          
+          // Debug: Print the URL to check if it's correct
+          print('Profile picture URL: $finalProfilePicUrl');
+        } catch (e) {
+          print('Error generating profile picture URL: $e');
+        }
+      }
+
       setState(() {
         name = profileResponse['name'] ?? 'Unknown';
         phone = profileResponse['phone_number'] ?? 'N/A';
         email = userEmail;
         createdAt = createdDateFormatted;
         tripCount = tripResponse.length;
+        profilePictureUrl = finalProfilePicUrl;
         isLoading = false;
       });
     } catch (e) {
       print('Error loading profile: $e');
+      setState(() {
+        isLoading = false;
+      });
     }
   }
 
@@ -72,6 +95,44 @@ class _OrgProfilePageState extends State<OrgProfilePage> {
     );
   }
 
+  Widget _buildProfileAvatar() {
+    if (profilePictureUrl.isNotEmpty) {
+      return CircleAvatar(
+        radius: 60,
+        backgroundColor: Colors.grey[200],
+        child: ClipOval(
+          child: Image.network(
+            profilePictureUrl,
+            width: 120,
+            height: 120,
+            fit: BoxFit.cover,
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) return child;
+              return Center(
+                child: CircularProgressIndicator(
+                  value: loadingProgress.expectedTotalBytes != null
+                      ? loadingProgress.cumulativeBytesLoaded / 
+                        loadingProgress.expectedTotalBytes!
+                      : null,
+                ),
+              );
+            },
+            errorBuilder: (context, error, stackTrace) {
+              print('Error loading image: $error');
+              return Icon(Icons.person, size: 60, color: Colors.grey);
+            },
+          ),
+        ),
+      );
+    } else {
+      return CircleAvatar(
+        radius: 60,
+        backgroundColor: Colors.grey[200],
+        child: Icon(Icons.person, size: 60, color: Colors.grey),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -84,7 +145,10 @@ class _OrgProfilePageState extends State<OrgProfilePage> {
               icon: Icon(Icons.logout, color: Colors.red),
               onPressed: () async {
                 await Supabase.instance.client.auth.signOut();
-                Navigator.push(context , MaterialPageRoute(builder: (context) => LoginScreen()));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => LoginScreen()),
+                );
               },
             ),
           ),
@@ -97,11 +161,7 @@ class _OrgProfilePageState extends State<OrgProfilePage> {
               padding: EdgeInsets.all(20),
               child: Column(
                 children: [
-                  CircleAvatar(
-                    radius: 60,
-                    backgroundColor: Colors.grey[200],
-                    backgroundImage: AssetImage("Images/pfp.jpg"),
-                  ),
+                  _buildProfileAvatar(),
                   SizedBox(height: 20),
                   Text(
                     name,
@@ -110,7 +170,6 @@ class _OrgProfilePageState extends State<OrgProfilePage> {
                   SizedBox(height: 5),
                   Text("Role: Organizer", style: TextStyle(color: Colors.grey)),
                   SizedBox(height: 20),
-
                   Card(
                     child: Padding(
                       padding: EdgeInsets.all(12),
@@ -127,14 +186,17 @@ class _OrgProfilePageState extends State<OrgProfilePage> {
                       ),
                     ),
                   ),
-
                   SizedBox(height: 20),
                   ElevatedButton(
-                    onPressed: () {
-                      Navigator.push(
+                    onPressed: () async {
+                      final result = await Navigator.push(
                         context,
                         MaterialPageRoute(builder: (context) => OrgModifyPage()),
                       );
+                      // Reload profile data when returning from edit page
+                      if (result == true) {
+                        _loadProfile();
+                      }
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color.fromARGB(255, 0, 0, 0),
@@ -142,9 +204,7 @@ class _OrgProfilePageState extends State<OrgProfilePage> {
                     ),
                     child: Text(
                       "Edit Profile",
-                      style: TextStyle(
-                        color: Colors.white
-                      ),
+                      style: TextStyle(color: Colors.white),
                     ),
                   ),
                 ],
