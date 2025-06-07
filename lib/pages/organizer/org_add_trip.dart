@@ -88,33 +88,32 @@ class _AddTripPageState extends State<AddTripPage> {
   }
 
   Future<String?> _uploadImage() async {
-  if (_image == null) return null;
+    if (_image == null) return null;
 
-  try {
-    final fileExtension = path.extension(_image!.path);
-    final fileName = 'trip_${DateTime.now().millisecondsSinceEpoch}$fileExtension';
+    try {
+      final fileExtension = path.extension(_image!.path);
+      final fileName =
+          'trip_${DateTime.now().millisecondsSinceEpoch}$fileExtension';
 
-    // Upload the file
-    await _supabase.storage.from(_bucketName).upload(
-      fileName,
-      _image!,
-      fileOptions: FileOptions(
-        cacheControl: '3600',
-        upsert: false,
-      ),
-    );
+      await _supabase.storage
+          .from(_bucketName)
+          .upload(
+            fileName,
+            _image!,
+            fileOptions: FileOptions(cacheControl: '3600', upsert: false),
+          );
 
-    // Get the public URL - this assumes your bucket has public permissions
-    final imageUrl = _supabase.storage.from(_bucketName).getPublicUrl(fileName);
-    
-    return imageUrl;
-  } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Image upload failed: ${e.toString()}')),
-    );
-    return null;
+      final imageUrl = _supabase.storage
+          .from(_bucketName)
+          .getPublicUrl(fileName);
+      return imageUrl;
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Image upload failed: ${e.toString()}')),
+      );
+      return null;
+    }
   }
-}
 
   void _downloadProgram() {
     setState(() {
@@ -126,83 +125,83 @@ class _AddTripPageState extends State<AddTripPage> {
   }
 
   Future<void> _publish() async {
-    if (!_formKey.currentState!.validate()) return;
+  if (!_formKey.currentState!.validate()) return;
 
-    if (_date == null || (!_isWeekend(_date!) && !_isHoliday(_date!))) {
+  if (_date == null || (!_isWeekend(_date!) && !_isHoliday(_date!))) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Date must be weekend or holiday')),
+    );
+    return;
+  }
+
+  setState(() {
+    _isUploading = true;
+  });
+
+  try {
+    String? imageUrl;
+    if (_image != null) {
+      imageUrl = await _uploadImage();
+      if (imageUrl == null) return;
+    }
+
+    final userId = _supabase.auth.currentUser?.id;
+    if (userId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Date must be weekend or holiday')),
+        const SnackBar(content: Text('Authentication required')),
       );
       return;
     }
 
-    setState(() {
-      _isUploading = true;
+    await _supabase.from('Voyage').insert({
+      'title': _titleController.text,
+      'description': _descController.text,
+      'type': _type!,
+      'date': _date!.toIso8601String(),
+      'price_per_person': double.parse(_priceController.text),
+      'nbr_places': int.parse(_seatsController.text),
+      'status': _status!,
+      'image_url': imageUrl,
+      'program_url': _programUrl,
+      'organizer_id': userId,
     });
 
-    try {
-      // Upload image first
-      String? imageUrl;
-      if (_image != null) {
-        imageUrl = await _uploadImage();
-        if (imageUrl == null) return;
-      }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Trip published successfully!")),
+    );
 
-      // Get current user ID
-      final userId = _supabase.auth.currentUser?.id;
-      if (userId == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Authentication required')),
-        );
-        return;
-      }
+    // Clear the form
+    _formKey.currentState!.reset();
+    setState(() {
+      _image = null;
+      _date = null;
+      _type = null;
+      _status = null;
+      _programUrl = null;
+      _titleController.clear();
+      _descController.clear();
+      _priceController.clear();
+      _seatsController.clear();
+      _dateController.clear();
+    });
 
-      // Insert trip data into database
-      // Insert trip data into database
-      await _supabase.from('Voyage').insert({
-        'title': _titleController.text,
-        'description': _descController.text,
-        'type': _type!,
-        'date': _date!.toIso8601String(),
-        'price_per_person': double.parse(
-          _priceController.text,
-        ), // Changed to match table and converted to float
-        'nbr_places': int.parse(
-          _seatsController.text,
-        ), // Changed to match table
-        'status': _status!,
-        'image_url': imageUrl,
-        'program_url': _programUrl,
-        'organizer_id': userId,
-      });
+    // Navigate back to home page
+    if (mounted) {
+      Navigator.pop(context);
+    }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Trip published successfully!")),
-      );
-
-      // Reset form
-      _formKey.currentState!.reset();
-      setState(() {
-        _image = null;
-        _date = null;
-        _type = null;
-        _status = null;
-        _programUrl = null;
-        _titleController.clear();
-        _descController.clear();
-        _priceController.clear();
-        _seatsController.clear();
-        _dateController.clear();
-      });
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Publishing failed: ${e.toString()}')),
-      );
-    } finally {
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Publishing failed: ${e.toString()}')),
+    );
+  } finally {
+    if (mounted) {
       setState(() {
         _isUploading = false;
       });
     }
   }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -393,6 +392,9 @@ class _AddTripPageState extends State<AddTripPage> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.black,
                       foregroundColor: Colors.white,
+                      padding: EdgeInsets.symmetric(
+                        vertical: 12,
+                      ), // Adjust padding if needed
                     ),
                     child:
                         _isUploading
