@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'dart:io';
+import 'package:path/path.dart' as path;
 
 class EditTripPage extends StatefulWidget {
   final Map<String, dynamic> trip;
@@ -15,6 +16,7 @@ class EditTripPage extends StatefulWidget {
 
 class _EditTripPageState extends State<EditTripPage> {
   final _formKey = GlobalKey<FormState>();
+  final String _bucketName = 'trip-images';
 
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
@@ -27,6 +29,7 @@ class _EditTripPageState extends State<EditTripPage> {
   String? _programPath;
   String? _type;
   String? _status;
+  bool _isUploading = false;
 
   final List<String> _types = [
     'City/site tour',
@@ -35,11 +38,13 @@ class _EditTripPageState extends State<EditTripPage> {
   ];
 
   final List<String> _statuses = [
+    'Published',
     'Available',
     'Closed',
     'Pending',
     'rejected',
-    'accepted'
+    'accepted',
+    'en_cours',
   ];
 
   @override
@@ -58,7 +63,6 @@ class _EditTripPageState extends State<EditTripPage> {
         ? _selectedDate!.toIso8601String().split('T').first
         : '';
 
-    // Load image from file path if exists
     final imgPath = widget.trip['img'];
     if (imgPath != null && File(imgPath).existsSync()) {
       _image = File(imgPath);
@@ -102,9 +106,18 @@ class _EditTripPageState extends State<EditTripPage> {
   }
 
   Future<void> _updateTrip() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() {
+      _isUploading = true;
+    });
+
     try {
+      final imageUrl = await _uploadImage();
+      if (imageUrl == null && _image != null) return;
+
       await Supabase.instance.client.from('Voyage').update({
-        'image_url': _image?.path ?? widget.trip['img'],
+        'image_url': imageUrl,
         'title': _titleController.text,
         'description': _descriptionController.text,
         'type': _type,
@@ -123,7 +136,44 @@ class _EditTripPageState extends State<EditTripPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error updating trip: $e')),
       );
+    } finally {
+      setState(() {
+        _isUploading = false;
+      });
     }
+  }
+
+  Future<String?> _uploadImage() async {
+    if (_image == null) return widget.trip['image_url'];
+
+    try {
+      final fileExtension = path.extension(_image!.path);
+      final fileName = 'trip_${DateTime.now().millisecondsSinceEpoch}$fileExtension';
+
+      await Supabase.instance.client.storage
+          .from(_bucketName)
+          .upload(fileName, _image!);
+
+      final imageUrl = Supabase.instance.client.storage
+          .from(_bucketName)
+          .getPublicUrl(fileName);
+
+      return imageUrl;
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Image upload failed: ${e.toString()}')),
+      );
+      return null;
+    }
+  }
+
+  ImageProvider? _getImageProvider() {
+    if (_image != null) {
+      return FileImage(_image!);
+    } else if (widget.trip['image_url'] != null) {
+      return NetworkImage(widget.trip['image_url']);
+    }
+    return null;
   }
 
   @override
@@ -142,29 +192,34 @@ class _EditTripPageState extends State<EditTripPage> {
           child: Column(
             children: [
               Center(
-                  child: GestureDetector(
-                    onTap: _pickImage,
-                    child: Container(
-                      height: 180,
-                      width: 180,
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.black45, width: 2.0),
-                        borderRadius: BorderRadius.circular(20),
-                        image:
-                            _image != null
-                                ? DecorationImage(
-                                  image: FileImage(_image!),
-                                  fit: BoxFit.cover,
-                                )
-                                : null,
-                      ),
-                      child:
-                          _image == null
-                              ? const Icon(Icons.camera_alt_outlined, size: 40)
-                              : null,
+                child: GestureDetector(
+                  onTap: _pickImage,
+                  child: Container(
+                    height: 180,
+                    width: 180,
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.black45, width: 2.0),
+                      borderRadius: BorderRadius.circular(20),
+                      image: _getImageProvider() != null
+                          ? DecorationImage(
+                              image: _getImageProvider()!,
+                              fit: BoxFit.cover,
+                            )
+                          : null,
                     ),
+                    child: _getImageProvider() == null
+                        ? const Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.camera_alt_outlined, size: 40),
+                              SizedBox(height: 8),
+                              Text('Tap to select image'),
+                            ],
+                          )
+                        : null,
                   ),
                 ),
+              ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _titleController,
@@ -257,7 +312,7 @@ class _EditTripPageState extends State<EditTripPage> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: _updateTrip,
+                  onPressed: _isUploading ? null : _updateTrip,
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
@@ -266,7 +321,11 @@ class _EditTripPageState extends State<EditTripPage> {
                     backgroundColor: Colors.black,
                     foregroundColor: Colors.white,
                   ),
-                  child: const Text('Save', style: TextStyle(fontSize: 16)),
+                  child: _isUploading
+                      ? const CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        )
+                      : const Text('Save', style: TextStyle(fontSize: 16)),
                 ),
               ),
             ],
