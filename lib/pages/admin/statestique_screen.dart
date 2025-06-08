@@ -153,7 +153,7 @@ class _StatestiquePageState extends State<StatestiquePage> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     _buildStatCard(
-                      "Total Voyages",
+                      "Total Trips",
                       totalVoyages.toString(),
                       Icons.flight_takeoff,
                     ),
