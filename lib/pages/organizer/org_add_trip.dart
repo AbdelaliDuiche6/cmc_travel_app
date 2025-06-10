@@ -18,7 +18,7 @@ class _AddTripPageState extends State<AddTripPage> {
   final String _bucketName = 'trip-images';
 
   String? _type;
-  String? _status;
+  // Removed _status variable since it will be automatically set
   DateTime? _date;
   File? _image;
   String? _programUrl;
@@ -160,7 +160,7 @@ class _AddTripPageState extends State<AddTripPage> {
       'date': _date!.toIso8601String(),
       'price_per_person': double.parse(_priceController.text),
       'nbr_places': int.parse(_seatsController.text),
-      'status': _status!,
+      'status': 'en_cours', // Automatically set to 'en_cours'
       'image_url': imageUrl,
       'program_url': _programUrl,
       'organizer_id': userId,
@@ -176,7 +176,7 @@ class _AddTripPageState extends State<AddTripPage> {
       _image = null;
       _date = null;
       _type = null;
-      _status = null;
+      // Removed _status = null since we're not using it anymore
       _programUrl = null;
       _titleController.clear();
       _descController.clear();
@@ -350,28 +350,7 @@ class _AddTripPageState extends State<AddTripPage> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  decoration: InputDecoration(
-                    labelText: "Status",
-                    border: border,
-                    enabledBorder: border,
-                  ),
-                  value: _status,
-                  onChanged: (value) => setState(() => _status = value),
-                  items:
-                      ['Published', 'In Progress', 'Finished']
-                          .map(
-                            (status) => DropdownMenuItem(
-                              value: status,
-                              child: Text(status),
-                            ),
-                          )
-                          .toList(),
-                  validator:
-                      (value) =>
-                          value == null ? 'Please select a status' : null,
-                ),
+                // Removed the Status dropdown section completely
                 const SizedBox(height: 20),
                 SizedBox(
                   width: double.infinity,

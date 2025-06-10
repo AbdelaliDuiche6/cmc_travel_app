@@ -41,7 +41,6 @@ class _EditTripPageState extends State<EditTripPage> {
     'Published',
     'Available',
     'Closed',
-    'Pending',
     'rejected',
     'accepted',
     'en_cours',
@@ -55,7 +54,7 @@ class _EditTripPageState extends State<EditTripPage> {
     _type = widget.trip['type'];
     _status = widget.trip['status'];
     _priceController.text = widget.trip['price_per_person']?.toString() ?? '';
-    _seatsController.text = widget.trip['seats']?.toString() ?? '';
+    _seatsController.text = widget.trip['nbr_places']?.toString() ?? '';
     _programPath = widget.trip['program'];
 
     _selectedDate = DateTime.tryParse(widget.trip['date'] ?? '');

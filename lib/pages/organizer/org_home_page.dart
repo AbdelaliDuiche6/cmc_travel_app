@@ -34,6 +34,73 @@ class _OrgHomePageState extends State<OrgHomePage> {
     _loadPendingBookingsCount(); // Add this to load pending bookings count
   }
 
+  // Simplified helper method to check if trip is approved
+bool _isTripApproved(String status) {
+  final normalizedStatus = status.toLowerCase();
+  return normalizedStatus == 'accepted'; // Only 'accepted' is considered approved
+}
+
+// Simplified method to get status color and icon
+Map<String, dynamic> _getStatusInfo(String status) {
+  final normalizedStatus = status.toLowerCase();
+  
+  if (normalizedStatus == 'accepted') {
+    return {
+      'color': Colors.green,
+      'icon': Icons.check_circle,
+      'text': 'Accepted',
+      'description': 'Trip accepted by admin'
+    };
+  } else if (normalizedStatus == 'rejected') {
+    return {
+      'color': Colors.red,
+      'icon': Icons.cancel,
+      'text': 'Rejected',
+      'description': 'Trip rejected by admin'
+    };
+  } else {
+    // All other statuses (including 'en_cours', 'pending', etc.) will be treated as pending
+    return {
+      'color': Colors.orange,
+      'icon': Icons.pending,
+      'text': 'Pending',
+      'description': 'Waiting for admin approval'
+    };
+  }
+}
+
+// Status chip remains the same as it uses _getStatusInfo
+Widget _buildStatusChip(String status) {
+  final statusInfo = _getStatusInfo(status);
+  return Container(
+    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+    decoration: BoxDecoration(
+      color: statusInfo['color'].withOpacity(0.1),
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: statusInfo['color'], width: 1),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          statusInfo['icon'],
+          size: 14,
+          color: statusInfo['color'],
+        ),
+        SizedBox(width: 4),
+        Text(
+          statusInfo['text'],
+          style: TextStyle(
+            color: statusInfo['color'],
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
   // Add this method to load pending bookings count
   Future<void> _loadPendingBookingsCount() async {
     try {
@@ -100,7 +167,7 @@ class _OrgHomePageState extends State<OrgHomePage> {
           .from('Voyage')
           .select()
           .eq('organizer_id', user.id)
-          .order('date', ascending: true);
+          .order('date', ascending: false);
 
       final data = response as List<dynamic>;
 
@@ -456,6 +523,9 @@ class _OrgHomePageState extends State<OrgHomePage> {
                         itemCount: filteredTrips.length,
                         itemBuilder: (context, index) {
                           final trip = filteredTrips[index];
+                          final status = trip['status'] ?? 'en_cours';
+                          final statusInfo = _getStatusInfo(status);
+                          
                           return GestureDetector(
                             onTap: () {
                               Navigator.push(
@@ -474,62 +544,72 @@ class _OrgHomePageState extends State<OrgHomePage> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  // Image Container
-                                  ClipRRect(
-                                    borderRadius: BorderRadius.vertical(
-                                      top: Radius.circular(12),
-                                    ),
-                                    child: Container(
-                                      height: 150,
-                                      width: double.infinity,
-                                      color: Colors.grey[200],
-                                      child:
-                                          trip['image_url'] != null
-                                              ? Image.network(
-                                                trip['image_url'],
-                                                fit: BoxFit.cover,
-                                                loadingBuilder: (
-                                                  context,
-                                                  child,
-                                                  loadingProgress,
-                                                ) {
-                                                  if (loadingProgress == null)
-                                                    return child;
-                                                  return Center(
-                                                    child: CircularProgressIndicator(
-                                                      value:
-                                                          loadingProgress
-                                                                      .expectedTotalBytes !=
-                                                                  null
-                                                              ? loadingProgress
-                                                                      .cumulativeBytesLoaded /
-                                                                  loadingProgress
-                                                                      .expectedTotalBytes!
-                                                              : null,
-                                                    ),
-                                                  );
-                                                },
-                                                errorBuilder: (
-                                                  context,
-                                                  error,
-                                                  stackTrace,
-                                                ) {
-                                                  return Center(
+                                  // Image Container with Status Badge
+                                  Stack(
+                                    children: [
+                                      ClipRRect(
+                                        borderRadius: BorderRadius.vertical(
+                                          top: Radius.circular(12),
+                                        ),
+                                        child: Container(
+                                          height: 150,
+                                          width: double.infinity,
+                                          color: Colors.grey[200],
+                                          child:
+                                              trip['image_url'] != null
+                                                  ? Image.network(
+                                                    trip['image_url'],
+                                                    fit: BoxFit.cover,
+                                                    loadingBuilder: (
+                                                      context,
+                                                      child,
+                                                      loadingProgress,
+                                                    ) {
+                                                      if (loadingProgress == null)
+                                                        return child;
+                                                      return Center(
+                                                        child: CircularProgressIndicator(
+                                                          value:
+                                                              loadingProgress
+                                                                          .expectedTotalBytes !=
+                                                                      null
+                                                                  ? loadingProgress
+                                                                          .cumulativeBytesLoaded /
+                                                                      loadingProgress
+                                                                          .expectedTotalBytes!
+                                                                  : null,
+                                                        ),
+                                                      );
+                                                    },
+                                                    errorBuilder: (
+                                                      context,
+                                                      error,
+                                                      stackTrace,
+                                                    ) {
+                                                      return Center(
+                                                        child: Icon(
+                                                          Icons.broken_image,
+                                                          size: 50,
+                                                        ),
+                                                      );
+                                                    },
+                                                  )
+                                                  : Center(
                                                     child: Icon(
-                                                      Icons.broken_image,
+                                                      Icons.photo,
                                                       size: 50,
+                                                      color: Colors.grey,
                                                     ),
-                                                  );
-                                                },
-                                              )
-                                              : Center(
-                                                child: Icon(
-                                                  Icons.photo,
-                                                  size: 50,
-                                                  color: Colors.grey,
-                                                ),
-                                              ),
-                                    ),
+                                                  ),
+                                        ),
+                                      ),
+                                      // Status Badge positioned on top-right of image
+                                      Positioned(
+                                        top: 10,
+                                        right: 10,
+                                        child: _buildStatusChip(status),
+                                      ),
+                                    ],
                                   ),
                                   Padding(
                                     padding: const EdgeInsets.all(15),
@@ -537,12 +617,27 @@ class _OrgHomePageState extends State<OrgHomePage> {
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
-                                        Text(
-                                          trip['title'] ?? 'No Title',
-                                          style: TextStyle(
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.bold,
-                                          ),
+                                        // Title and Status Info Row
+                                        Row(
+                                          children: [
+                                            Expanded(
+                                              child: Text(
+                                                trip['title'] ?? 'No Title',
+                                                style: TextStyle(
+                                                  fontSize: 18,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ),
+                                            Tooltip(
+                                              message: statusInfo['description'],
+                                              child: Icon(
+                                                Icons.info_outline,
+                                                size: 16,
+                                                color: Colors.grey[600],
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                         SizedBox(height: 8),
                                         Row(
@@ -585,25 +680,21 @@ class _OrgHomePageState extends State<OrgHomePage> {
                                           mainAxisAlignment:
                                               MainAxisAlignment.end,
                                           children: [
+                                            // CORRECTED EDIT BUTTON
                                             ElevatedButton.icon(
-                                              onPressed: () async {
-                                                final result =
-                                                    await Navigator.push(
-                                                      context,
-                                                      MaterialPageRoute(
-                                                        builder:
-                                                            (context) =>
-                                                                EditTripPage(
-                                                                  trip: trip,
-                                                                ),
-                                                      ),
-                                                    );
+                                              onPressed: _isTripApproved(status) ? () async {
+                                                final result = await Navigator.push(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                    builder: (context) => EditTripPage(trip: trip),
+                                                  ),
+                                                );
                                                 if (result == true) fetchTrips();
-                                              },
+                                              } : null,
                                               icon: Icon(Icons.edit, size: 18),
                                               label: Text("Edit"),
                                               style: ElevatedButton.styleFrom(
-                                                backgroundColor: Colors.blue,
+                                                backgroundColor: _isTripApproved(status) ? Colors.blue : Colors.grey,
                                                 foregroundColor: Colors.white,
                                               ),
                                             ),
