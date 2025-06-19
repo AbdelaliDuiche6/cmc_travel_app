@@ -6,11 +6,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import 'package:cmc_travel_app/constants.dart';
-import '../../models/travel.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-void main() => runApp(
-  MaterialApp(debugShowCheckedModeBanner: false, home: TraineeScreen()),
-);
+void main() async {
+  await Supabase.initialize(
+    anonKey:
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZoZHR6eGRyYXV3YWltb25iamt6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc3NTAzNzUsImV4cCI6MjA2MzMyNjM3NX0.ht0Yn2byTGRjyRVJa7kFBVCwT3hk-PCuKf_jcVnQEvw",
+    url: "https://fhdtzxdrauwaimonbjkz.supabase.co",
+  );
+
+  runApp(MaterialApp(debugShowCheckedModeBanner: false, home: TraineeScreen()));
+}
 
 class TraineeScreen extends StatefulWidget {
   const TraineeScreen({super.key});
@@ -26,15 +32,6 @@ class _TraineeScreenState extends State<TraineeScreen> {
       _selectedIndex = index;
     });
   }
-
-  final List<Travel> travels = [
-    Travel("Jemaa el-Fnaa", "Marrakesh", "assets/images/gmail.svg", 4.5),
-    Travel("Marina", "Agadir", "assets/images/gmail.svg", 4.5),
-    Travel("Hassan II Mosque", "Casablanca", "assets/images/gmail.svg", 4.5),
-    Travel("Ait Benhaddou", "Ouarzazate", "assets/images/gmail.svg", 4.5),
-    Travel("Ait Benhaddou", "Ouarzazate", "assets/images/gmail.svg", 4.5),
-    Travel("Ait Benhaddou", "Ouarzazate", "assets/images/gmail.svg", 4.5),
-  ];
 
   final screens = [
     HomeStagaire(),
@@ -80,61 +77,6 @@ class _TraineeScreenState extends State<TraineeScreen> {
           label: 'Profile',
         ),
       ],
-    );
-  }
-
-  Container buildSearchContainer(Size size) {
-    return Container(
-      alignment: Alignment.center,
-      padding: EdgeInsets.only(
-        left: kDefaultPadding / 3,
-        right: kDefaultPadding / 2,
-      ),
-      margin: EdgeInsets.only(left: kDefaultPadding, right: kDefaultPadding),
-      height: 50,
-      width: size.width,
-      decoration: BoxDecoration(
-        color: Colors.black12.withAlpha(10),
-        borderRadius: BorderRadius.circular(16.0),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: TextField(
-              autofocus: false,
-              decoration: InputDecoration(
-                filled: false,
-                focusedBorder: InputBorder.none,
-                border: OutlineInputBorder(borderSide: BorderSide.none),
-                contentPadding: EdgeInsets.all(15),
-                prefixIcon: Padding(
-                  padding: const EdgeInsets.all(10),
-                  child: SvgPicture.asset('assets/icons/Search.svg'),
-                ),
-                suffixIcon: VerticalDivider(
-                  indent: 12,
-                  endIndent: 12,
-                  color: Colors.black12.withAlpha(30),
-                  thickness: 2.0,
-                ),
-                hintText: 'Search Places',
-                hintStyle: TextStyle(
-                  color: Colors.black.withAlpha(60),
-                  fontSize: 16,
-                  fontWeight: FontWeight.w400,
-                ),
-              ),
-            ),
-          ),
-          TextButton(
-            onPressed: () => {},
-            child: Text(
-              'Search',
-              style: TextStyle(color: Colors.black.withAlpha(90), fontSize: 17),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
