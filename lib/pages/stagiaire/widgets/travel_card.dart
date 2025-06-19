@@ -17,70 +17,117 @@ class TravelCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      // margin: EdgeInsets.only(left: kDefaultPadding),
-      // width: size.width * 0.7,
-      child: Column(
-        children: [
-          Image.asset(travel.imagePath),
-          GestureDetector(
-            onTap: onPress,
-            child: Container(
-              padding: EdgeInsets.all(kDefaultPadding / 2),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.only(
-                  bottomRight: Radius.circular(10),
-                  bottomLeft: Radius.circular(10),
+    return GestureDetector(
+      onTap: onPress,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: kDefaultPadding),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(15),
+          boxShadow: [
+            BoxShadow(
+              color: kPrimaryColor.withAlpha(30),
+              blurRadius: 10,
+              spreadRadius: 0,
+              offset: const Offset(0, 1),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(15),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Image with proper aspect ratio and error handling
+              AspectRatio(
+                aspectRatio: 16 / 9,
+                child: Image.network(
+                  travel.imagePath,
+                  fit: BoxFit.cover,
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return Center(
+                      child: CircularProgressIndicator(
+                        value:
+                            loadingProgress.expectedTotalBytes != null
+                                ? loadingProgress.cumulativeBytesLoaded /
+                                    loadingProgress.expectedTotalBytes!
+                                : null,
+                      ),
+                    );
+                  },
+                  errorBuilder:
+                      (context, error, stackTrace) => Container(
+                        color: Colors.grey[200],
+                        child: const Icon(
+                          Icons.image_not_supported,
+                          color: Colors.grey,
+                        ),
+                      ),
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    offset: Offset(0, 10),
-                    blurRadius: 50,
-                    color: kPrimaryColor.withAlpha(100),
-                  ),
-                ],
               ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: RichText(
-                      text: TextSpan(
+              // Content section
+              Container(
+                padding: const EdgeInsets.all(kDefaultPadding),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: const BorderRadius.only(
+                    bottomLeft: Radius.circular(15),
+                    bottomRight: Radius.circular(15),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    // Text content
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          TextSpan(
-                            text: "${travel.name}\n".toUpperCase(),
-                            style: TextStyle(
-                              color: Colors.black,
-                              // overflow: TextOverflow.ellipsis,
+                          Text(
+                            travel.name.toUpperCase(),
+                            style: const TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.bold,
+                              overflow: TextOverflow.ellipsis,
                             ),
+                            maxLines: 1,
                           ),
-                          TextSpan(
-                            text: travel.location.toUpperCase(),
+                          const SizedBox(height: 5),
+                          Text(
+                            travel.location.toUpperCase(),
                             style: TextStyle(
+                              fontSize: 12,
                               color: kPrimaryColor.withAlpha(150),
                               overflow: TextOverflow.ellipsis,
-                              fontSize: 10,
                             ),
+                            maxLines: 2,
                           ),
                         ],
                       ),
                     ),
-                  ),
-                  Spacer(),
-                  Icon(Icons.star_rounded, color: Colors.yellow),
-                  Text(
-                    '${travel.rating}',
-                    style: Theme.of(
-                      context,
-                    ).textTheme.labelLarge!.copyWith(color: kPrimaryColor),
-                  ),
-                ],
+                    // Price
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: kPrimaryColor.withAlpha(50),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        '\$${travel.price}',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: kPrimaryColor,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
