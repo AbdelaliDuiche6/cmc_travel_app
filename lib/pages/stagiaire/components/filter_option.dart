@@ -11,7 +11,7 @@ class FilterOption extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       margin: EdgeInsets.only(right: kDefaultPadding),
-      height: 45,
+      height: 40,
       width: 100,
       decoration: BoxDecoration(
         color: kPrimaryColor,
