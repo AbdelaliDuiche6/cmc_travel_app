@@ -17,7 +17,9 @@ class _TravelDetailsState extends State<TravelDetails> {
     showModalBottomSheet(
       context: context,
       isDismissible: true,
-      // shape: ,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (ctx) => Payment(),
     );
   }
@@ -51,6 +53,7 @@ class _TravelDetailsState extends State<TravelDetails> {
                   CustomBackButton(
                     backgroundColor: Colors.white,
                     onTap: () => {Navigator.of(context).pop()},
+                    margin: EdgeInsets.only(top: 35, left: 20),
                   ),
                 ],
               ),
@@ -179,6 +182,7 @@ class _TravelDetailsState extends State<TravelDetails> {
                   ),
                 ],
               ),
+              SizedBox(height: 25),
             ],
           ),
         ),
