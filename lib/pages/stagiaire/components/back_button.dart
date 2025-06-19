@@ -5,15 +5,17 @@ class CustomBackButton extends StatelessWidget {
     super.key,
     required this.backgroundColor,
     required this.onTap,
+    required this.margin,
   });
 
   final Color backgroundColor;
   final void Function() onTap;
+  final EdgeInsetsGeometry? margin;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: EdgeInsets.only(top: 35, left: 20),
+      margin: margin,
       width: 45,
       height: 45,
       decoration: BoxDecoration(
