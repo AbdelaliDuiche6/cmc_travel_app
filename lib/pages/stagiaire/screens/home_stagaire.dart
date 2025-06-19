@@ -1,6 +1,7 @@
 import 'package:cmc_travel_app/pages/stagiaire/screens/travel_details.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../constants.dart';
 import '../../../models/travel.dart';
@@ -15,12 +16,27 @@ class HomeStagaire extends StatefulWidget {
 }
 
 class _HomeStagaireState extends State<HomeStagaire> {
-  final List<Travel> travels = [
-    Travel("Akchor", "North", "assets/images/travel.png", 4.5),
-    Travel("Marina", "Agadir", "assets/images/travel.png", 4.5),
-    Travel("Hassan", "Rabat", "assets/images/travel.png", 4.5),
-    Travel("Kasbah", "Agadir", "assets/images/travel.png", 4.5),
-  ];
+  final supabase = Supabase.instance.client;
+  List<Travel> travels = [];
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    fetchVoyages();
+  }
+
+  Future<void> fetchVoyages() async {
+    final data = await supabase
+        .from('Voyage')
+        .select()
+        .then((res) => res as List<dynamic>);
+
+    setState(() {
+      travels = data.map((item) => Travel.fromMap(item)).toList();
+      isLoading = false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,7 +48,10 @@ class _HomeStagaireState extends State<HomeStagaire> {
         SizedBox(
           height: 45,
           child: Padding(
-            padding: const EdgeInsets.only(left: kDefaultPadding),
+            padding: const EdgeInsets.only(
+              left: kDefaultPadding,
+              right: kDefaultPadding,
+            ),
             child: ListView(
               scrollDirection: Axis.horizontal,
               children: [
@@ -44,34 +63,40 @@ class _HomeStagaireState extends State<HomeStagaire> {
             ),
           ),
         ),
-        SizedBox(height: 30),
+        SizedBox(height: 20),
         Expanded(
           child: Padding(
             padding: EdgeInsets.all(kDefaultPadding),
-            child: GridView.builder(
-              itemCount: travels.length,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-                childAspectRatio: 3 / 4,
-              ),
-              itemBuilder: (context, index) {
-                return TravelCard(
-                  size: size * 0.8,
-                  travel: travels[index],
-                  onPress:
-                      () => {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => TravelDetails(),
+            child:
+                isLoading
+                    ? Center(
+                      child: CircularProgressIndicator(color: kPrimaryColor),
+                    )
+                    : GridView.builder(
+                      itemCount: travels.length,
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            crossAxisSpacing: 12,
+                            mainAxisSpacing: 12,
+                            childAspectRatio: 3 / 4,
                           ),
-                        ),
+                      itemBuilder: (context, index) {
+                        return TravelCard(
+                          size: size * 0.8,
+                          travel: travels[index],
+                          onPress:
+                              () => {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => TravelDetails(),
+                                  ),
+                                ),
+                              },
+                        );
                       },
-                );
-              },
-            ),
+                    ),
           ),
         ),
       ],
