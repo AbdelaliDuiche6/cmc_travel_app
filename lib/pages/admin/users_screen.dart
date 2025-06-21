@@ -1,3 +1,4 @@
+import 'package:animate_do/animate_do.dart';
 import 'package:cmc_travel_app/pages/admin/admin_screen.dart';
 import 'package:cmc_travel_app/pages/admin/statestique_screen.dart';
 import 'package:cmc_travel_app/pages/admin/profile_screen.dart';
@@ -12,8 +13,8 @@ class UsersScreen extends StatefulWidget {
 }
 
 class _UsersScreenState extends State<UsersScreen> {
-  final Color primaryColor = const Color(0xFF3AB796);
-  final Color secondaryColor = const Color(0xFF3AABB7);
+  final Color primaryColor = const  Color.fromARGB(255, 26, 142, 234);
+  final Color secondaryColor = Color.fromARGB(255, 0, 0, 0);
   final Color errorColor = const Color(0xFFE57373);
   final Color warningColor = const Color(0xFFFFB74D);
   final supabase = Supabase.instance.client;
@@ -31,7 +32,7 @@ class _UsersScreenState extends State<UsersScreen> {
     try {
       final response = await supabase
           .from('Commentaire')
-          .select('*, profiles (name)')
+          .select('*, profiles (name,image_url)')
           .eq('is_signaled', true);
 
       setState(() {
@@ -170,12 +171,15 @@ class _UsersScreenState extends State<UsersScreen> {
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: const Text(
-          'Reported Comments',
-          style: TextStyle(
-            fontSize: 20.0,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
+        title: FadeIn(
+          duration: const Duration(milliseconds: 800),
+          child: const Text(
+            'Notifications',
+            style: TextStyle(
+              fontSize: 20.0,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
           ),
         ),
         centerTitle: true,
@@ -183,284 +187,514 @@ class _UsersScreenState extends State<UsersScreen> {
         elevation: 0,
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(
-            bottom: Radius.circular(20),
+            bottom: Radius.circular(16),
           ),
         ),
-        toolbarHeight: 80,
-        actions: [
-          IconButton(
-            icon: Badge(
-              backgroundColor: Colors.red[400],
-              child: const Icon(Icons.notifications, size: 26),
-            ),
-            onPressed: () {},
-            color: Colors.white,
-          ),
-        ],
+        toolbarHeight: 70,
+        // actions: [
+        //   BounceInRight(
+        //     duration: const Duration(milliseconds: 1000),
+        //     child: IconButton(
+        //       icon: const Icon(Icons.notifications, size: 26),
+        //       onPressed: () {},
+        //       color: Colors.white,
+        //     ),
+        //   ),
+        // ],
       ),
       body: isLoading
           ? const Center(
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF3AB796)),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF3AB796)),
+              strokeWidth: 3,
+            ),
+            SizedBox(height: 16),
+            Text(
+              'Loading reported comments...',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey,
+                fontWeight: FontWeight.w500,
               ),
-            )
+            ),
+          ],
+        ),
+      )
           : reportedComments.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.check_circle_outline,
-                        size: 60,
-                        color: Colors.grey[400],
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'No reported comments found',
-                        style: TextStyle(
-                          fontSize: 18,
-                          color: Colors.grey[600],
-                        ),
-                      ),
+          ? Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.green[50],
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.verified_outlined,
+                size: 48,
+                color: primaryColor,
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'All Clear!',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey[800],
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'No reported comments found',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey[600],
+              ),
+            ),
+          ],
+        ),
+      )
+          : RefreshIndicator(
+        onRefresh: fetchReportedComments,
+        color: primaryColor,
+        backgroundColor: Colors.white,
+        strokeWidth: 2.5,
+        child: ListView.separated(
+          padding: const EdgeInsets.all(16),
+          itemCount: reportedComments.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 16),
+          itemBuilder: (context, index) {
+            final comment = reportedComments[index];
+            final stagiaireName =
+                comment['profiles']?['name'] ?? 'Unknown user';
+               // final picUrl = comment['profiles']['image_url'];
+                  final picUrl = Supabase.instance.client.storage.from('profile-images')
+    .getPublicUrl(comment['profiles']['image_url']);
+            return Dismissible(
+              key: Key(comment['id'].toString()),
+              direction: DismissDirection.endToStart,
+              background: Container(
+                alignment: Alignment.centerRight,
+                padding: const EdgeInsets.only(right: 24),
+                margin: const EdgeInsets.symmetric(vertical: 4),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.transparent,
+                      errorColor.withOpacity(0.1),
+                      errorColor.withOpacity(0.3),
                     ],
+                    stops: const [0.0, 0.7, 1.0],
                   ),
-                )
-              : RefreshIndicator(
-                  onRefresh: fetchReportedComments,
-                  color: primaryColor,
-                  child: ListView.separated(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: reportedComments.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 12),
-                    itemBuilder: (context, index) {
-                      final comment = reportedComments[index];
-                      final stagiaireName =
-                          comment['profiles']?['name'] ?? 'Unknown user';
-                      return Dismissible(
-                        key: Key(comment['id'].toString()),
-                        direction: DismissDirection.endToStart,
-                        background: Container(
-                          alignment: Alignment.centerRight,
-                          padding: const EdgeInsets.only(right: 20),
-                          decoration: BoxDecoration(
-                            color: errorColor.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.delete_sweep,
+                      color: errorColor,
+                      size: 32,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Delete',
+                      style: TextStyle(
+                        color: errorColor,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              confirmDismiss: (direction) async {
+                return await showDialog(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (BuildContext context) {
+                    return AlertDialog(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      title: Row(
+                        children: [
+                          Icon(
+                            Icons.warning_rounded,
+                            color: warningColor,
+                            size: 28,
                           ),
-                          child: Icon(
-                            Icons.delete_forever,
-                            color: errorColor,
-                            size: 30,
-                          ),
-                        ),
-                        confirmDismiss: (direction) async {
-                          return await showDialog(
-                            context: context,
-                            builder: (BuildContext context) {
-                              return AlertDialog(
-                                title: const Text("Confirm Delete"),
-                                content: const Text(
-                                    "Are you sure you want to delete this comment?"),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () =>
-                                        Navigator.of(context).pop(false),
-                                    child: Text(
-                                      "CANCEL",
-                                      style: TextStyle(color: primaryColor),
-                                    ),
-                                  ),
-                                  TextButton(
-                                    onPressed: () =>
-                                        Navigator.of(context).pop(true),
-                                    child: const Text(
-                                      "DELETE",
-                                      style: TextStyle(color: Colors.red),
-                                    ),
-                                  ),
-                                ],
-                              );
-                            },
-                          );
-                        },
-                        onDismissed: (_) => deleteComment(comment['id']),
-                        child: Card(
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            side: BorderSide(
-                              color: Colors.grey[200]!,
-                              width: 1,
+                          const SizedBox(width: 12),
+                          const Text(
+                            "Confirm Delete",
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 20,
                             ),
                           ),
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(12),
-                            onTap: () {},
-                            child: Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      CircleAvatar(
-                                        backgroundColor: primaryColor,
-                                        child: Text(
-                                          stagiaireName[0].toUpperCase(),
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              stagiaireName,
-                                              style: const TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 16,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 4),
-                                            Text(
-                                              comment['text'] ??
-                                                  'No comment text',
-                                              style: TextStyle(
-                                                fontSize: 14,
-                                                color: Colors.grey[700],
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 8, vertical: 4),
-                                        decoration: BoxDecoration(
-                                          color: primaryColor.withOpacity(0.1),
-                                          borderRadius:
-                                              BorderRadius.circular(12),
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(
-                                              Icons.star,
-                                              size: 16,
-                                              color: Colors.amber[600],
-                                            ),
-                                            const SizedBox(width: 4),
-                                            Text(
-                                              comment['note'].toString(),
-                                              style: TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                color: primaryColor,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  if (comment['image_url'] != null &&
-                                      comment['image_url'].toString().isNotEmpty)
-                                    Padding(
-                                      padding: const EdgeInsets.only(top: 12),
-                                      child: ClipRRect(
-                                        borderRadius: BorderRadius.circular(8),
-                                        child: Image.network(
-                                          comment['image_url'],
-                                          height: 180,
-                                          width: double.infinity,
-                                          fit: BoxFit.cover,
-                                          loadingBuilder: (BuildContext context,
-                                              Widget child,
-                                              ImageChunkEvent? loadingProgress) {
-                                            if (loadingProgress == null) {
-                                              return child;
-                                            }
-                                            return Center(
-                                              child: CircularProgressIndicator(
-                                                value: loadingProgress
-                                                            .expectedTotalBytes !=
-                                                        null
-                                                    ? loadingProgress
-                                                            .cumulativeBytesLoaded /
-                                                        loadingProgress
-                                                            .expectedTotalBytes!
-                                                    : null,
-                                                color: primaryColor,
-                                              ),
-                                            );
-                                          },
-                                        ),
-                                      ),
-                                    ),
-                                  const SizedBox(height: 16),
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: OutlinedButton.icon(
-                                          icon: const Icon(Icons.delete,
-                                              size: 18),
-                                          label: const Text("Delete"),
-                                          style: OutlinedButton.styleFrom(
-                                            foregroundColor: errorColor,
-                                            side: BorderSide(
-                                                color: errorColor, width: 1),
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(8),
-                                            ),
-                                            padding: const EdgeInsets.symmetric(
-                                                vertical: 12),
-                                          ),
-                                          onPressed: () async {
-                                            await deleteComment(comment['id']);
-                                          },
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: ElevatedButton.icon(
-                                          icon: const Icon(Icons.block,
-                                              size: 18),
-                                          label: const Text("Ban User"),
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor:
-                                                warningColor.withOpacity(0.1),
-                                            foregroundColor: warningColor,
-                                            elevation: 0,
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(8),
-                                            ),
-                                            padding: const EdgeInsets.symmetric(
-                                                vertical: 12),
-                                          ),
-                                          onPressed: () async {
-                                            await banUser(
-                                                comment['stagiaire_id'],
-                                                comment['id']);
-                                          },
-                                        ),
-                                      ),
-                                    ],
-                                  )
-                                ],
+                        ],
+                      ),
+                      content: const Text(
+                        "This action cannot be undone. Are you sure you want to delete this reported comment?",
+                        style: TextStyle(fontSize: 16),
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () =>
+                              Navigator.of(context).pop(false),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 20, vertical: 12),
+                          ),
+                          child: Text(
+                            "CANCEL",
+                            style: TextStyle(
+                              color: Colors.grey[600],
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        ElevatedButton(
+                          onPressed: () =>
+                              Navigator.of(context).pop(true),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: errorColor,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 20, vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: const Text(
+                            "DELETE",
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                );
+              },
+              onDismissed: (_) => deleteComment(comment['id']),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(0.08),
+                      spreadRadius: 0,
+                      blurRadius: 10,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                  border: Border.all(
+                    color: Colors.grey[100]!,
+                    width: 1,
+                  ),
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(16),
+                    onTap: () {},
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Header with user info and rating
+                          Row(
+  crossAxisAlignment: CrossAxisAlignment.start,
+  children: [
+    // 👤 Avatar
+    buildUserAvatar(
+  picUrl: picUrl,
+  name: stagiaireName,
+  showStatusDot: false,
+  statusColor: Colors.green, // ou Colors.red, etc.
+),
+
+
+    const SizedBox(width: 16),
+
+    // 🧑‍🎓 Infos + badge alignés en haut
+    Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Ligne avec le nom et le badge alignés
+          Padding(
+            padding: const EdgeInsets.only(top: 20),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 🧑‍🎓 Nom
+                Expanded(
+                  child: Text(
+                    stagiaireName,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                      color: Color(0xFF2D3748),
+                    ),
+                  ),
+                ),
+            
+                // 🚩 Badge "Reported"
+                Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.red[50],
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: Colors.red[200]!,
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.flag, size: 14, color: Colors.red[600]),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Reported',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.red[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 4),
+          // 👉 Tu peux ajouter d’autres infos ici
+        ],
+      ),
+    ),
+  ],
+),
+
+
+
+                          const SizedBox(height: 16),
+
+                          // Comment text
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[50],
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: Colors.grey[200]!,
+                                width: 1,
+                              ),
+                            ),
+                            child: Text(
+                              comment['text'] ?? 'No comment text',
+                              style: TextStyle(
+                                fontSize: 15,
+                                color: Colors.grey[800],
+                                height: 1.4,
                               ),
                             ),
                           ),
-                        ),
-                      );
-                    },
+
+                          // Image if available
+                          if (comment['image_url'] != null &&
+                              comment['image_url'].toString().isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 16),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(12),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.grey.withOpacity(0.2),
+                                      spreadRadius: 0,
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Image.network(
+                                    comment['image_url'],
+                                    height: 200,
+                                    width: double.infinity,
+                                    fit: BoxFit.cover,
+                                    loadingBuilder: (BuildContext context,
+                                        Widget child,
+                                        ImageChunkEvent? loadingProgress) {
+                                      if (loadingProgress == null) {
+                                        return child;
+                                      }
+                                      return Container(
+                                        height: 200,
+                                        decoration: BoxDecoration(
+                                          color: Colors.grey[100],
+                                          borderRadius:
+                                          BorderRadius.circular(12),
+                                        ),
+                                        child: Center(
+                                          child: Column(
+                                            mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                            children: [
+                                              CircularProgressIndicator(
+                                                value: loadingProgress
+                                                    .expectedTotalBytes !=
+                                                    null
+                                                    ? loadingProgress
+                                                    .cumulativeBytesLoaded /
+                                                    loadingProgress
+                                                        .expectedTotalBytes!
+                                                    : null,
+                                                color: primaryColor,
+                                                strokeWidth: 3,
+                                              ),
+                                              const SizedBox(height: 12),
+                                              Text(
+                                                'Loading image...',
+                                                style: TextStyle(
+                                                  color: Colors.grey[600],
+                                                  fontSize: 14,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return Container(
+                                        height: 200,
+                                        decoration: BoxDecoration(
+                                          color: Colors.grey[100],
+                                          borderRadius:
+                                          BorderRadius.circular(12),
+                                        ),
+                                        child: Column(
+                                          mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                          children: [
+                                            Icon(
+                                              Icons.broken_image_outlined,
+                                              size: 48,
+                                              color: Colors.grey[400],
+                                            ),
+                                            const SizedBox(height: 8),
+                                            Text(
+                                              'Failed to load image',
+                                              style: TextStyle(
+                                                color: Colors.grey[600],
+                                                fontSize: 14,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                          const SizedBox(height: 20),
+
+                          // Action buttons
+                          Row(
+                            children: [
+                              // Expanded(
+                              //   child: OutlinedButton.icon(
+                              //     icon: const Icon(Icons.delete_outline,
+                              //         size: 20),
+                              //     label: const Text(
+                              //       "Delete Comment",
+                              //       style: TextStyle(
+                              //         fontWeight: FontWeight.w600,
+                              //       ),
+                              //     ),
+                              //     style: OutlinedButton.styleFrom(
+                              //       foregroundColor: errorColor,
+                              //       side: BorderSide(
+                              //           color: errorColor, width: 1.5),
+                              //       shape: RoundedRectangleBorder(
+                              //         borderRadius:
+                              //         BorderRadius.circular(12),
+                              //       ),
+                              //       padding: const EdgeInsets.symmetric(
+                              //           vertical: 14),
+                              //     ),
+                              //     onPressed: () async {
+                              //       await deleteComment(comment['id']);
+                              //     },
+                              //   ),
+                              // ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  icon: const Icon(Icons.block,
+                                      size: 20),
+                                  label: const Text(
+                                    "Ban User",
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  style: OutlinedButton.styleFrom(
+                                    backgroundColor: Colors.white,
+                                    foregroundColor: errorColor,
+                                    side: BorderSide(
+                                                color: errorColor, width: 1.5),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                              BorderRadius.circular(12),
+                                            ),
+                                    elevation: 0,
+                                    shadowColor: warningColor.withOpacity(0.3),
+
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 14),
+                                  ),
+                                  onPressed: () async {
+                                    await banUser(
+                                        comment['stagiaire_id'],
+                                        comment['id']);
+                                  },
+                                ),
+                              ),
+                            ],
+                          )
+                        ],
+                      ),
+                    ),
                   ),
                 ),
+              ),
+            );
+          },
+        ),
+      ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           boxShadow: [
@@ -515,4 +749,73 @@ class _UsersScreenState extends State<UsersScreen> {
       ),
     );
   }
+
+ Widget buildUserAvatar({
+  required String? picUrl,
+  required String name,
+  bool showStatusDot = false, // facultatif
+  Color statusColor = Colors.green,
+}) {
+  final bool hasImage = picUrl != null && picUrl.isNotEmpty;
+
+  return Stack(
+    alignment: Alignment.bottomRight,
+    children: [
+      ClipRRect(
+        borderRadius: BorderRadius.circular(50),
+        child: hasImage
+            ? Image.network(
+                picUrl,
+                width: 80,
+                height: 80,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => _fallbackAvatar(name),
+              )
+            : _fallbackAvatar(name),
+      ),
+
+      // ✅ Badge d’état optionnel (en bas à droite)
+      if (showStatusDot)
+        Positioned(
+          right: 2,
+          bottom: 2,
+          child: Container(
+            width: 12,
+            height: 12,
+            decoration: BoxDecoration(
+              color: statusColor,
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white, width: 2),
+            ),
+          ),
+        ),
+    ],
+  );
+}
+
+
+Widget _fallbackAvatar(String name) {
+  return Container(
+    width: 60,
+    height: 60,
+    decoration: BoxDecoration(
+      gradient: LinearGradient(
+        colors: [Colors.blue.shade600, Colors.blue.shade300],
+      ),
+      shape: BoxShape.circle,
+    ),
+    child: Center(
+      child: Text(
+        name.isNotEmpty ? name[0].toUpperCase() : '?',
+        style: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+          fontSize: 20,
+        ),
+      ),
+    ),
+  );
+}
+
+
 }
