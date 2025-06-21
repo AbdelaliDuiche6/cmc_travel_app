@@ -1,8 +1,9 @@
-import 'package:cmc_travel_app/pages/admin/statestique_screen.dart';
-import 'package:cmc_travel_app/pages/admin/profile_screen.dart';
-import 'package:cmc_travel_app/pages/admin/users_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:animate_do/animate_do.dart';
+import 'package:cmc_travel_app/pages/admin/users_screen.dart';
+import 'package:cmc_travel_app/pages/admin/statestique_screen.dart';
+import 'package:cmc_travel_app/pages/admin/profile_screen.dart';
 
 class AdminScreen extends StatefulWidget {
   const AdminScreen({super.key});
@@ -11,34 +12,55 @@ class AdminScreen extends StatefulWidget {
   State<AdminScreen> createState() => _AdminScreenState();
 }
 
-class _AdminScreenState extends State<AdminScreen> {
+class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStateMixin {
   final supabase = Supabase.instance.client;
-  final Color primaryColor = const Color(0xFF3AB796);
-  final Color secondaryColor = const Color(0xFF3AABB7);
+  final Color primaryColor = const Color.fromARGB(255, 26, 142, 234);
+  final Color secondaryColor = const Color.fromARGB(255, 0, 0, 0);
 
+  late var picfinal = '';
   List<dynamic> voyages = [];
   bool isLoading = true;
+  late AnimationController _animationController;
+  
+  // Pour les animations de carte
+  List<bool> _hoveredCards = [];
+  int _selectedIndex = 0;
 
   @override
   void initState() {
     super.initState();
     fetchVoyages();
+    
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+    _animationController.forward();
+  }
+  
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
   }
 
   Future<void> fetchVoyages() async {
+    setState(() {
+      isLoading = true;
+    });
     try {
       final response = await supabase
           .from('Voyage')
-          .select('*, profiles(name)')
+          .select('*, profiles(name,image_url)')
           .eq('status', 'en_cours')
           .order('date', ascending: true);
 
       setState(() {
         voyages = response;
+        _hoveredCards = List.generate(response.length, (_) => false);
         isLoading = false;
       });
     } catch (error) {
-      print("Erreur de chargement: $error");
       setState(() {
         isLoading = false;
       });
@@ -67,7 +89,6 @@ class _AdminScreenState extends State<AdminScreen> {
     );
   }
 
-  int _selectedIndex = 0;
   void _navigate(int index) {
     setState(() {
       _selectedIndex = index;
@@ -100,382 +121,505 @@ class _AdminScreenState extends State<AdminScreen> {
         break;
     }
   }
+  
+  Future<void> _acceptVoyage(dynamic voyage, int index) async {
+    try {
+      final response = await supabase
+          .from('Voyage')
+          .update({'status': 'accepted'})
+          .eq('id', voyage['id'])
+          .select();
+
+      if (response.isNotEmpty) {
+        if (!mounted) return;
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Voyage accepté'),
+            backgroundColor: Colors.green,
+          ),
+        );
+
+        setState(() {
+          voyages.removeAt(index);
+        });
+      } else {
+        throw Exception("Update failed or returned no result.");
+      }
+    } catch (error) {
+      if (!mounted) return;
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erreur: $error'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+  
+  Future<void> _rejectVoyage(dynamic voyage, int index) async {
+    try {
+      final response = await supabase
+          .from('Voyage')
+          .update({'status': 'rejected'})
+          .eq('id', voyage['id'])
+          .select();
+
+      if (response.isNotEmpty) {
+        if (!mounted) return;
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Voyage rejeté'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+
+        setState(() {
+          voyages.removeAt(index);
+        });
+      } else {
+        throw Exception("Update failed or returned no result.");
+      }
+    } catch (error) {
+      if (!mounted) return;
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erreur: $error'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
 
   void _previewVoyage(dynamic voyage) {
-  showDialog(
-    context: context,
-    builder: (context) => Dialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Text(
-                      voyage['title'],
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: primaryColor,
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              
-              // Ajout de l'image en haut du dialogue
-              ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  height: 180,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[200],
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: voyage['image_url'] != null && voyage['image_url'].isNotEmpty
-                      ? Image.network(
-                          voyage['image_url'],
-                          fit: BoxFit.cover,
-                          loadingBuilder: (context, child, loadingProgress) {
-                            if (loadingProgress == null) return child;
-                            return Center(
-                              child: CircularProgressIndicator(
-                                value: loadingProgress.expectedTotalBytes != null
-                                    ? loadingProgress.cumulativeBytesLoaded /
-                                        loadingProgress.expectedTotalBytes!
-                                    : null,
-                              ),
-                            );
-                          },
-                          errorBuilder: (context, error, stackTrace) => Center(
-                            child: Icon(
-                              Icons.image_not_supported,
-                              color: Colors.grey[400],
-                              size: 40,
-                            ),
-                          ),
-                        )
-                      : Center(
-                          child: Icon(
-                            Icons.photo_camera,
-                            color: Colors.grey[400],
-                            size: 40,
-                          ),
-                        ),
-                ),
-              ),
-              const SizedBox(height: 16),
 
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Column(
-                  children: [
-                    _buildInfoRow(
-                      Icons.person,
-                      "Organisateur: ${voyage['profiles']['name']}",
-                      iconColor: primaryColor,
-                    ),
-                    _buildInfoRow(
-                      Icons.category,
-                      "Type: ${voyage['type']}",
-                      iconColor: primaryColor,
-                    ),
-                    _buildInfoRow(
-                      Icons.description,
-                      "Description: ${voyage['description']}",
-                      iconColor: primaryColor,
-                    ),
-                    _buildInfoRow(
-                      Icons.calendar_today,
-                      "Date: ${voyage['date']}",
-                      iconColor: primaryColor,
-                    ),
-                    _buildInfoRow(
-                      Icons.attach_money,
-                      "Prix: ${voyage['price_per_person']} DH",
-                      iconColor: primaryColor,
-                    ),
-                    _buildInfoRow(
-                      Icons.people,
-                      "Places disponibles: ${voyage['nbr_places']}",
-                      iconColor: primaryColor,
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
-              Center(
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: primaryColor,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 12,
-                    ),
-                  ),
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text(
-                    'Fermer',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                ),
-              ),
-            ],
-          ),
+    // Animation pour l'ouverture du dialogue
+    showDialog(
+
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
         ),
-      ),
-    ),
-  );
-}
+        backgroundColor: Colors.white,
+        child: FadeIn(
+          duration: const Duration(milliseconds: 300),
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
 
-  Widget _buildVoyageCard(dynamic voyage, int index) {
-    return Card(
-      elevation: 2,
-      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: () => _previewVoyage(voyage),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    width: 150,
-                    height: 150,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      color: Colors.grey[200],
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: Image.network(
-                      voyage['image_url'] ,
-                        fit: BoxFit.cover,
-                        loadingBuilder: (context, child, loadingProgress) {
-                          if (loadingProgress == null) return child;
-                          return Center(
-                            child: CircularProgressIndicator(
-                              value: loadingProgress.expectedTotalBytes != null
-                                  ? loadingProgress.cumulativeBytesLoaded /
-                                      loadingProgress.expectedTotalBytes!
-                                  : null,
-                            ),
-                          );
-                        },
-                        errorBuilder: (context, error, stackTrace) => Icon(
-                          Icons.image_not_supported,
-                          color: Colors.grey[400],
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
                           voyage['title'],
                           style: TextStyle(
-                            fontSize: 18,
+                            fontSize: 20,
                             fontWeight: FontWeight.bold,
                             color: primaryColor,
                           ),
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          "Organisé par ${voyage['profiles']['name']}",
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[600],
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  // Ajout de l'image en haut du dialogue avec animation
+                  FadeInDown(
+                    duration: const Duration(milliseconds: 400),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        height: 180,
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[200],
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: voyage['image_url'] != null && voyage['image_url'].isNotEmpty
+                            ? Image.network(
+                                voyage['image_url'],
+                                fit: BoxFit.cover,
+                                loadingBuilder: (context, child, loadingProgress) {
+                                  if (loadingProgress == null) return child;
+                                  return Center(
+                                    child: CircularProgressIndicator(
+                                      value: loadingProgress.expectedTotalBytes != null
+                                          ? loadingProgress.cumulativeBytesLoaded /
+                                              loadingProgress.expectedTotalBytes!
+                                          : null,
+                                    ),
+                                  );
+                                },
+                                errorBuilder: (context, error, stackTrace) => Center(
+                                  child: Icon(
+                                    Icons.image_not_supported,
+                                    color: Colors.grey[400],
+                                    size: 40,
+                                  ),
+                                ),
+                              )
+                            : Center(
+                                child: Icon(
+                                  Icons.photo_camera,
+                                  color: Colors.grey[400],
+                                  size: 40,
+                                ),
+                              ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  FadeInUp(
+                    duration: const Duration(milliseconds: 500),
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[100],
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.grey.withAlpha(26),
+                            spreadRadius: 1,
+                            blurRadius: 5,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        children: [
+                          _buildInfoRow(
+                            Icons.person,
+                            "Organisateur: ${voyage['profiles']['name']}",
+                            iconColor: primaryColor,
+                          ),
+                          _buildInfoRow(
+                            Icons.category,
+                            "Type: ${voyage['type']}",
+                            iconColor: primaryColor,
+                          ),
+                          _buildInfoRow(
+                            Icons.description,
+                            "Description: ${voyage['description']}",
+                            iconColor: primaryColor,
+                          ),
+                          _buildInfoRow(
+                            Icons.calendar_today,
+                            "Date: ${voyage['date']}",
+                            iconColor: primaryColor,
+                          ),
+                          _buildInfoRow(
+                            Icons.attach_money,
+                            "Prix: ${voyage['price_per_person']} DH",
+                            iconColor: primaryColor,
+                          ),
+                          _buildInfoRow(
+                            Icons.people,
+                            "Places disponibles: ${voyage['nbr_places']}",
+                            iconColor: primaryColor,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  FadeInUp(
+                    delay: const Duration(milliseconds: 200),
+                    duration: const Duration(milliseconds: 600),
+                    child: Center(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: primaryColor,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 12,
                           ),
                         ),
-                      ],
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text(
+                          'Fermer',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Icon(Icons.calendar_today, size: 16, color: Colors.grey[600]),
-                  const SizedBox(width: 8),
-                  Text(
-                    voyage['date'],
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[800],
-                    ),
-                  ),
-                  const Spacer(),
-                  Icon(Icons.people, size: 16, color: Colors.grey[600]),
-                  const SizedBox(width: 4),
-                  Text(
-                    "${voyage['nbr_places']} places",
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[800],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      icon: const Icon(Icons.remove_red_eye, size: 18),
-                      label: const Text("Détails"),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: primaryColor,
-                        side: BorderSide(color: primaryColor),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      onPressed: () => _previewVoyage(voyage),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      icon: const Icon(Icons.check_circle, size: 18),
-                      label: const Text("Accepter"),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: primaryColor,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      onPressed: () async {
-                        try {
-                          final response = await supabase
-                              .from('Voyage')
-                              .update({'status': 'accepted'})
-                              .eq('id', voyage['id'])
-                              .select();
-
-                          if (response != null && response.isNotEmpty) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Voyage accepté'),
-                                backgroundColor: Colors.green,
-                              ),
-                            );
-
-                            setState(() {
-                              voyages.removeAt(index);
-                            });
-                          } else {
-                            throw Exception("Update failed or returned no result.");
-                          }
-                        } catch (error) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Erreur: $error'),
-                              backgroundColor: Colors.red,
-                            ),
-                          );
-                        }
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      icon: const Icon(Icons.cancel, size: 18),
-                      label: const Text("Rejeter"),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red[400],
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      onPressed: () async {
-                        try {
-                          final response = await supabase
-                              .from('Voyage')
-                              .update({'status': 'rejected'})
-                              .eq('id', voyage['id'])
-                              .select();
-
-                          if (response != null && response.isNotEmpty) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Voyage rejeté'),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
-
-                            setState(() {
-                              voyages.removeAt(index);
-                            });
-                          } else {
-                            throw Exception("Update failed or returned no result.");
-                          }
-                        } catch (error) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Erreur: $error'),
-                              backgroundColor: Colors.red,
-                            ),
-                          );
-                        }
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ],
+            ),
           ),
         ),
       ),
     );
   }
 
+  Widget _buildVoyageCard(dynamic voyage, int index) {
+
+    final picUrl = Supabase.instance.client.storage.from('profile-images')
+    .getPublicUrl(voyage['profiles']['image_url']);
+
+
+    print(picUrl);
+    // Utiliser un délai basé sur l'index pour l'animation d'entrée
+    final delay = Duration(milliseconds: 100 * index);
+    return FadeInUp(
+      delay: delay,
+      duration: const Duration(milliseconds: 500),
+      child: Card(
+        elevation: _hoveredCards[index] ? 10 : 4,
+        margin: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+        ),
+        color: Colors.white,
+        shadowColor: primaryColor.withAlpha(60),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(24),
+          onTap: () => _previewVoyage(voyage),
+          onHover: (isHovered) {
+            setState(() {
+              _hoveredCards[index] = isHovered;
+             
+            });
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(22.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SlideInLeft(
+                  delay: Duration(milliseconds: 200 + (index * 50)),
+                  duration: const Duration(milliseconds: 400),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 160,
+                        height: 160,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(20),
+                          color: Colors.grey[100],
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.grey.withAlpha(60),
+                              blurRadius: 10,
+                              spreadRadius: 1,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(20),
+                          child: Image.network(
+                            voyage['image_url'],
+                            fit: BoxFit.cover,
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
+                              return Center(
+                                child: CircularProgressIndicator(
+                                  color: primaryColor,
+                                  value: loadingProgress.expectedTotalBytes != null
+                                      ? loadingProgress.cumulativeBytesLoaded /
+                                          loadingProgress.expectedTotalBytes!
+                                      : null,
+                                ),
+                              );
+                            },
+                            errorBuilder: (context, error, stackTrace) => Icon(
+                              Icons.image_not_supported,
+                              color: Colors.grey[400],
+                              size: 50,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 20),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              voyage['title'],
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                color: primaryColor,
+                                letterSpacing: 0.5,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(50), // pour l'effet rond
+                                  child: picUrl != null && picUrl.isNotEmpty
+                                      ? Image.network(
+                                    picUrl,
+                                    width: 40,
+                                    height: 40,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) => const Icon(Icons.person, size: 32),
+                                  )
+                                      : const Icon(Icons.person, size: 32),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    voyage['profiles']?['name'] ?? 'Inconnu',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      color: Colors.grey[700],
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[50],
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.grey.withAlpha(60)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.calendar_today_rounded, size: 18, color: primaryColor),
+                      const SizedBox(width: 7),
+                      Text(
+                        voyage['date'],
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey[800],
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const Spacer(),
+                      Icon(Icons.people_alt_rounded, size: 18, color: primaryColor),
+                      const SizedBox(width: 8),
+                      Text(
+                        "${voyage['nbr_places']} places",
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey[800],
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                SlideInRight(
+                  delay: Duration(milliseconds: 300 + (index * 50)),
+                  duration: const Duration(milliseconds: 400),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          icon: const Icon(Icons.remove_red_eye_rounded, size: 17),
+                          label: const Text("Détails"),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: primaryColor,
+                            side: BorderSide(color: primaryColor, width: 1.5),
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            elevation: 0,
+                          ),
+                          onPressed: () => _previewVoyage(voyage),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          icon: const Icon(Icons.check_circle_rounded, size: 17),
+                          label: const Text("Accepter"),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            elevation: 0,
+                          ),
+                          onPressed: () async {
+                            _acceptVoyage(voyage, index);
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          icon: const Icon(Icons.cancel_rounded, size: 17),
+                          label: const Text("Rejeter"),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red[400],
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            elevation: 0,
+                          ),
+                          onPressed: () async {
+                            _rejectVoyage(voyage, index);
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: const Text(
-          'Commandes Trips',
-          style: TextStyle(
-            fontSize: 20.0,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
+        title: FadeIn(
+          duration: const Duration(milliseconds: 800),
+          child: const Text(
+            'Commandes Trips',
+            style: TextStyle(
+              fontSize: 20.0,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
           ),
         ),
         centerTitle: true,
@@ -487,36 +631,123 @@ class _AdminScreenState extends State<AdminScreen> {
           ),
         ),
         toolbarHeight: 70,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications, size: 26),
-            onPressed: () {},
-            color: Colors.white,
-          ),
-        ],
+        // actions: [
+        //   BounceInRight(
+        //     duration: const Duration(milliseconds: 1000),
+        //     child: IconButton(
+        //       icon: const Icon(Icons.notifications, size: 26),
+        //       onPressed: () {},
+        //       color: Colors.white,
+        //     ),
+        //   ),
+        // ],
       ),
       body: isLoading
-          ? const Center(
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF3AB796)),
-              ),
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: primaryColor.withAlpha(30),
+                          blurRadius: 15,
+                          spreadRadius: 2,
+                        ),
+                      ],
+                    ),
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
+                      strokeWidth: 3,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  FadeIn(
+                    duration: const Duration(milliseconds: 500),
+                    child: Text(
+                      'Chargement des voyages...',
+                      style: TextStyle(
+                        color: Colors.grey[700],
+                        fontSize: 17,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              )
             )
           : voyages.isEmpty
               ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(
-                        Icons.airplanemode_active,
-                        size: 60,
-                        color: Colors.grey[400],
+                      Container(
+                        padding: const EdgeInsets.all(30),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(100),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.grey.withAlpha(40),
+                              blurRadius: 15,
+                              spreadRadius: 2,
+                            ),
+                          ],
+                        ),
+                        child: FadeInDown(
+                          duration: const Duration(milliseconds: 600),
+                          child: Icon(
+                            Icons.airplanemode_active,
+                            size: 70,
+                            color: primaryColor.withAlpha(180),
+                          ),
+                        ),
                       ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Aucun voyage en cours',
-                        style: TextStyle(
-                          fontSize: 18,
-                          color: Colors.grey[600],
+                      const SizedBox(height: 24),
+                      FadeInUp(
+                        duration: const Duration(milliseconds: 600),
+                        child: Text(
+                          'Aucun voyage en attente',
+                          style: TextStyle(
+                            fontSize: 20,
+                            color: Colors.grey[800],
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      FadeInUp(
+                        delay: const Duration(milliseconds: 200),
+                        duration: const Duration(milliseconds: 600),
+                        child: Text(
+                          'Tous les voyages ont été traités',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 30),
+                      FadeInUp(
+                        delay: const Duration(milliseconds: 400),
+                        duration: const Duration(milliseconds: 600),
+                        child: ElevatedButton.icon(
+                          icon: const Icon(Icons.refresh),
+                          label: const Text("Actualiser"),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: primaryColor,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            elevation: 0,
+                          ),
+                          onPressed: fetchVoyages,
                         ),
                       ),
                     ],
@@ -525,62 +756,128 @@ class _AdminScreenState extends State<AdminScreen> {
               : RefreshIndicator(
                   color: primaryColor,
                   onRefresh: fetchVoyages,
-                  child: ListView.builder(
-                    padding: const EdgeInsets.only(top: 16, bottom: 80),
-                    itemCount: voyages.length,
-                    itemBuilder: (context, index) =>
-                        _buildVoyageCard(voyages[index], index),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                    child: Column(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
+                          child: FadeIn(
+                            duration: const Duration(milliseconds: 800),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [primaryColor.withAlpha(30), Colors.white],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                borderRadius: BorderRadius.circular(16),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: primaryColor.withAlpha(30),
+                                    spreadRadius: 1,
+                                    blurRadius: 12,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.info_outline,
+                                    color: primaryColor,
+                                    size: 26,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      'Vous avez ${voyages.length} ${voyages.length > 1 ? "voyages" : "voyage"} en attente de validation',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        color: Colors.grey[800],
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                 
+                                ],
+                              ),
+                            ),
+                            
+                          ),
+                          
+                        ),
+
+                        Expanded(
+                          child: ListView.builder(
+                            padding: const EdgeInsets.only(top: 8, bottom: 80),
+                            itemCount: voyages.length,
+                            itemBuilder: (context, index) {
+                              return _buildVoyageCard(voyages[index], index);
+                            },
+                          ),
+                        ),
+                        ],
+                      ),
+
+                    ),
+
                   ),
-                ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.withOpacity(0.1),
-              spreadRadius: 1,
-              blurRadius: 10,
-              offset: const Offset(0, -2),)
-          ],
-          borderRadius: const BorderRadius.vertical(
-            top: Radius.circular(20),
-          ),
-        ),
-        child: ClipRRect(
-          borderRadius: const BorderRadius.vertical(
-            top: Radius.circular(20),
-          ),
-          child: NavigationBar(
-            height: 70,
-            selectedIndex: _selectedIndex,
-            onDestinationSelected: _navigate,
-            backgroundColor: Colors.white,
-            indicatorColor: primaryColor.withOpacity(0.2),
-            labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-            animationDuration: const Duration(milliseconds: 300),
-            destinations: [
-              NavigationDestination(
-                icon: Icon(Icons.home_outlined, color: Colors.grey[600]),
-                selectedIcon: Icon(Icons.home, color: primaryColor),
-                label: 'Home',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.people_outline, color: Colors.grey[600]),
-                selectedIcon: Icon(Icons.people, color: primaryColor),
-                label: 'Users',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.bar_chart_outlined,
-                    color: Colors.grey[600]),
-                selectedIcon:
-                    Icon(Icons.bar_chart, color: primaryColor),
-                label: 'Stats',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.person_outline, color: Colors.grey[600]),
-                selectedIcon: Icon(Icons.person, color: primaryColor),
-                label: 'Profile',
-              ),
+
+      bottomNavigationBar: SlideInUp(
+        duration: const Duration(milliseconds: 800),
+        child: Container(
+          decoration: BoxDecoration(
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.withAlpha(51),
+                spreadRadius: 2,
+                blurRadius: 15,
+                offset: const Offset(0, -3),
+              )
             ],
+            borderRadius: const BorderRadius.vertical(
+              top: Radius.circular(20),
+            ),
+          ),
+          child: ClipRRect(
+            borderRadius: const BorderRadius.vertical(
+              top: Radius.circular(20),
+            ),
+            child: NavigationBar(
+              height: 70,
+              selectedIndex: _selectedIndex,
+              onDestinationSelected: _navigate,
+              backgroundColor: Colors.white,
+              indicatorColor: Colors.white.withAlpha(25),
+              labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+              animationDuration: const Duration(milliseconds: 300),
+              destinations: [
+                NavigationDestination(
+                  icon: Icon(Icons.home_outlined, color: Colors.grey[600]),
+                  selectedIcon: Icon(Icons.home, color: primaryColor),
+                  label: 'Home',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.people_outline, color: Colors.grey[600]),
+                  selectedIcon: Icon(Icons.people, color: primaryColor),
+                  label: 'Users',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.bar_chart_outlined,
+                      color: Colors.grey[600]),
+                  selectedIcon:
+                      Icon(Icons.bar_chart, color: primaryColor),
+                  label: 'Stats',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.person_outline, color: Colors.grey[600]),
+                  selectedIcon: Icon(Icons.person, color: primaryColor),
+                  label: 'Profile',
+                ),
+              ],
+            ),
           ),
         ),
       ),
