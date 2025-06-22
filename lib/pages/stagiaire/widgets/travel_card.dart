@@ -83,7 +83,7 @@ class TravelCard extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            travel.name.toUpperCase(),
+                            travel.title.toUpperCase(),
                             style: const TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.bold,
@@ -93,7 +93,7 @@ class TravelCard extends StatelessWidget {
                           ),
                           const SizedBox(height: 5),
                           Text(
-                            travel.location.toUpperCase(),
+                            travel.type.toUpperCase(),
                             style: TextStyle(
                               fontSize: 12,
                               color: kPrimaryColor.withAlpha(150),
