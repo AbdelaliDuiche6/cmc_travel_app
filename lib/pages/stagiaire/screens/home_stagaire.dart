@@ -18,7 +18,10 @@ class HomeStagaire extends StatefulWidget {
 class _HomeStagaireState extends State<HomeStagaire> {
   final supabase = Supabase.instance.client;
   List<Travel> travels = [];
+  List<Travel> _displayedTravels = [];
   bool isLoading = true;
+  String _searchQuery = '';
+  String _selectedType = 'All';
 
   @override
   void initState() {
@@ -34,8 +37,48 @@ class _HomeStagaireState extends State<HomeStagaire> {
 
     setState(() {
       travels = data.map((item) => Travel.fromMap(item)).toList();
+      _applyFilters();
       isLoading = false;
     });
+  }
+
+  void _applyFilters() {
+    List<Travel> filtered = travels;
+
+    if (_searchQuery.isNotEmpty) {
+      filtered =
+          filtered
+              .where(
+                (travel) => travel.title.toLowerCase().contains(
+                  _searchQuery.toLowerCase(),
+                ),
+              )
+              .toList();
+    }
+
+    if (_selectedType != 'All') {
+      filtered =
+          filtered
+              .where(
+                (travel) =>
+                    travel.type.toLowerCase() == _selectedType.toLowerCase(),
+              )
+              .toList();
+    }
+
+    setState(() {
+      _displayedTravels = filtered;
+    });
+  }
+
+  void _onSearchChanged(String value) {
+    _searchQuery = value;
+    _applyFilters();
+  }
+
+  void _onTypeSelected(String type) {
+    _selectedType = type;
+    _applyFilters();
   }
 
   @override
@@ -43,7 +86,7 @@ class _HomeStagaireState extends State<HomeStagaire> {
     Size size = MediaQuery.of(context).size;
     return Column(
       children: [
-        buildSearchContainer(size),
+        _buildSearchContainer(size),
         SizedBox(height: 30),
         SizedBox(
           height: 45,
@@ -55,10 +98,26 @@ class _HomeStagaireState extends State<HomeStagaire> {
             child: ListView(
               scrollDirection: Axis.horizontal,
               children: [
-                FilterOption(titleCategory: 'Hiking'),
-                FilterOption(titleCategory: 'Beach'),
-                FilterOption(titleCategory: 'Forrest'),
-                FilterOption(titleCategory: 'Fishing'),
+                FilterOption(
+                  titleCategory: 'All',
+                  isSelected: _selectedType == 'All',
+                  onTap: () => _onTypeSelected('All'),
+                ),
+                FilterOption(
+                  titleCategory: 'City',
+                  isSelected: _selectedType == 'City',
+                  onTap: () => _onTypeSelected('City'),
+                ),
+                FilterOption(
+                  titleCategory: 'Event',
+                  isSelected: _selectedType == 'Event',
+                  onTap: () => _onTypeSelected('Event'),
+                ),
+                FilterOption(
+                  titleCategory: 'Sport',
+                  isSelected: _selectedType == 'Sport',
+                  onTap: () => _onTypeSelected('Sport'),
+                ),
               ],
             ),
           ),
@@ -73,7 +132,7 @@ class _HomeStagaireState extends State<HomeStagaire> {
                       child: CircularProgressIndicator(color: kPrimaryColor),
                     )
                     : GridView.builder(
-                      itemCount: travels.length,
+                      itemCount: _displayedTravels.length,
                       gridDelegate:
                           const SliverGridDelegateWithFixedCrossAxisCount(
                             crossAxisCount: 2,
@@ -84,7 +143,7 @@ class _HomeStagaireState extends State<HomeStagaire> {
                       itemBuilder: (context, index) {
                         return TravelCard(
                           size: size * 0.8,
-                          travel: travels[index],
+                          travel: _displayedTravels[index],
                           onPress:
                               () => {
                                 Navigator.push(
@@ -103,7 +162,7 @@ class _HomeStagaireState extends State<HomeStagaire> {
     );
   }
 
-  Container buildSearchContainer(Size size) {
+  Container _buildSearchContainer(Size size) {
     return Container(
       alignment: Alignment.center,
       padding: EdgeInsets.only(
@@ -121,6 +180,7 @@ class _HomeStagaireState extends State<HomeStagaire> {
         children: [
           Expanded(
             child: TextField(
+              onChanged: _onSearchChanged,
               autofocus: false,
               decoration: InputDecoration(
                 filled: false,
