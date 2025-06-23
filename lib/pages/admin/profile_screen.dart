@@ -5,6 +5,7 @@ import 'package:cmc_travel_app/pages/admin/users_screen.dart';
 import 'package:cmc_travel_app/pages/login_screen.dart';
 import 'package:cmc_travel_app/services/auth/auth_service.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter/animation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -694,58 +695,78 @@ body: isLoading
           ),
         ),
       ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.withOpacity(0.1),
-              spreadRadius: 1,
-              blurRadius: 10,
-              offset: const Offset(0, -2),)
-          ],
-          borderRadius: const BorderRadius.vertical(
-            top: Radius.circular(20),
-          ),
-        ),
-        child: ClipRRect(
-          borderRadius: const BorderRadius.vertical(
-            top: Radius.circular(20),
-          ),
-          child: NavigationBar(
-            height: 70,
-            selectedIndex: _selectedIndex,
-            onDestinationSelected: _navigate,
-            backgroundColor: Colors.white,
-            indicatorColor: primaryColor.withOpacity(0.2),
-            labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-            animationDuration: const Duration(milliseconds: 300),
-            destinations: [
-              NavigationDestination(
-                icon: Icon(Icons.home_outlined, color: Colors.grey[600]),
-                selectedIcon: Icon(Icons.home, color: primaryColor),
-                label: 'Home',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.people_outline, color: Colors.grey[600]),
-                selectedIcon: Icon(Icons.people, color: primaryColor),
-                label: 'Users',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.bar_chart_outlined,
-                    color: Colors.grey[600]),
-                selectedIcon:
-                    Icon(Icons.bar_chart, color: primaryColor),
-                label: 'Stats',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.person_outline, color: Colors.grey[600]),
-                selectedIcon: Icon(Icons.person, color: primaryColor),
-                label: 'Profile',
-              ),
-            ],
-          ),
-        ),
+     bottomNavigationBar: Container(
+  decoration: BoxDecoration(
+    gradient: LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      colors: [
+        Colors.white.withOpacity(0.95),
+        Colors.white,
+      ],
+    ),
+    boxShadow: [
+      BoxShadow(
+        color: Colors.grey.withOpacity(0.08),
+        blurRadius: 20,
+        offset: const Offset(0, -8),
+        spreadRadius: 0,
       ),
+      BoxShadow(
+        color: primaryColor.withOpacity(0.05),
+        blurRadius: 40,
+        offset: const Offset(0, -2),
+        spreadRadius: -5,
+      ),
+    ],
+    borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+  ),
+  child: ClipRRect(
+    borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+    child: NavigationBar(
+      height: 85,
+      selectedIndex: _selectedIndex,
+      onDestinationSelected: (index) {
+        HapticFeedback.lightImpact(); // Add haptic feedback
+        setState(() => _selectedIndex = index);
+        _navigate(index);
+      },
+      backgroundColor: Colors.transparent,
+      indicatorColor: primaryColor.withOpacity(0.15),
+      indicatorShape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+      animationDuration: const Duration(milliseconds: 400),
+      destinations: [
+        _buildAnimatedDestination(
+          index: 0,
+          selectedIcon: Icons.home_rounded,
+          unselectedIcon: Icons.home_outlined,
+          label: 'Home',
+        ),
+        _buildAnimatedDestination(
+          index: 1,
+          selectedIcon: Icons.people_rounded,
+          unselectedIcon: Icons.people_outline_rounded,
+          label: 'Users',
+        ),
+        _buildAnimatedDestination(
+          index: 2,
+          selectedIcon: Icons.bar_chart_rounded,
+          unselectedIcon: Icons.bar_chart_outlined,
+          label: 'Stats',
+        ),
+        _buildAnimatedDestination(
+          index: 3,
+          selectedIcon: Icons.person_rounded,
+          unselectedIcon: Icons.person_outline_rounded,
+          label: 'Profile',
+        ),
+      ],
+    ),
+  ),
+),
 
     );
   }
@@ -875,6 +896,62 @@ Widget _buildEnhancedInfoRow(
         ),
       ],
     ),
+  );
+}
+
+NavigationDestination _buildAnimatedDestination({
+  required int index,
+  required IconData selectedIcon,
+  required IconData unselectedIcon,
+  required String label,
+}) {
+  final isSelected = _selectedIndex == index;
+  
+  return NavigationDestination(
+    icon: TweenAnimationBuilder<double>(
+      duration: const Duration(milliseconds: 300),
+      tween: Tween<double>(
+        begin: 0.0,
+        end: isSelected ? 1.0 : 0.0,
+      ),
+      curve: Curves.elasticOut,
+      builder: (context, value, child) {
+        return Transform.scale(
+          scale: 1.0 + (value * 0.15), // Scale animation
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: EdgeInsets.all(isSelected ? 8.0 : 4.0),
+            decoration: BoxDecoration(
+              color: isSelected 
+                  ? primaryColor.withOpacity(0.1) 
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 250),
+              transitionBuilder: (child, animation) {
+                return RotationTransition(
+                  turns: animation,
+                  child: ScaleTransition(
+                    scale: animation,
+                    child: child,
+                  ),
+                );
+              },
+              child: Icon(
+                isSelected ? selectedIcon : unselectedIcon,
+                color: isSelected 
+                    ? primaryColor
+                    : secondaryColor.withOpacity(0.8),
+                size: isSelected ? 26 : 24,
+                key: ValueKey<bool>(isSelected),
+              ),
+            ),
+          ),
+        );
+      },
+    ),
+    label: label,
   );
 }
 }
