@@ -53,7 +53,7 @@ class _SignupScreenState extends State<SignupScreen> with SingleTickerProviderSt
 
     if (name.isEmpty || email.isEmpty || password.isEmpty || phoneNumber.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Veuillez remplir tous les champs")),
+        const SnackBar(content: Text("Veuillez remplir tous les champs"),backgroundColor: Colors.red,),
       );
       return;
     }
