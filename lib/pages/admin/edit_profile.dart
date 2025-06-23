@@ -1,9 +1,11 @@
+import 'package:cmc_travel_app/components/my_button.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:io';
 import 'package:path/path.dart' as path;
-
+import 'package:animate_do/animate_do.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 class EditProfilePage extends StatefulWidget {
   @override
   _EditProfilePageState createState() => _EditProfilePageState();
@@ -601,53 +603,60 @@ class _EditProfilePageState extends State<EditProfilePage>
                       ),
                       
                       SizedBox(height: 20),
+                      FadeInUp(
+                    delay: const Duration(milliseconds: 800),
+                    child: _isLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : MyButton(text: "Save Changes", onTap: _saveChanges),
+                  ),
+                  
                       
-                      AnimatedBuilder(
-                        animation: _buttonScaleAnimation,
-                        builder: (context, child) {
-                          return Transform.scale(
-                            scale: _buttonScaleAnimation.value,
-                            child: Container(
-                              width: double.infinity,
-                              height: 55,
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [primaryColor, const Color.fromARGB(255, 65, 220, 255)],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                ),
-                                borderRadius: BorderRadius.circular(35),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: primaryColor.withOpacity(0.4),
-                                    spreadRadius: 2,
-                                    blurRadius: 15,
-                                    offset: Offset(0, 5),
-                                  ),
-                                ],
-                              ),
-                              child: ElevatedButton(
-                                onPressed: _saveChanges,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.black,
-                                  shadowColor: Colors.transparent,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(35),
-                                  ),
-                                ),
-                                child: Text(
-                                  "Save Changes",
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
+                      // AnimatedBuilder(
+                      //   animation: _buttonScaleAnimation,
+                      //   builder: (context, child) {
+                      //     return Transform.scale(
+                      //       scale: _buttonScaleAnimation.value,
+                      //       child: Container(
+                      //         width: double.infinity,
+                      //         height: 55,
+                      //         decoration: BoxDecoration(
+                      //           gradient: LinearGradient(
+                      //             colors: [primaryColor, const Color.fromARGB(255, 65, 220, 255)],
+                      //             begin: Alignment.topLeft,
+                      //             end: Alignment.bottomRight,
+                      //           ),
+                      //           borderRadius: BorderRadius.circular(35),
+                      //           boxShadow: [
+                      //             BoxShadow(
+                      //               color: primaryColor.withOpacity(0.4),
+                      //               spreadRadius: 2,
+                      //               blurRadius: 15,
+                      //               offset: Offset(0, 5),
+                      //             ),
+                      //           ],
+                      //         ),
+                      //         child: ElevatedButton(
+                      //           onPressed: _saveChanges,
+                      //           style: ElevatedButton.styleFrom(
+                      //             backgroundColor: Colors.black,
+                      //             shadowColor: Colors.transparent,
+                      //             shape: RoundedRectangleBorder(
+                      //               borderRadius: BorderRadius.circular(35),
+                      //             ),
+                      //           ),
+                      //           child: Text(
+                      //             "Save Changes",
+                      //             style: TextStyle(
+                      //               color: Colors.white,
+                      //               fontSize: 18,
+                      //               fontWeight: FontWeight.bold,
+                      //             ),
+                      //           ),
+                      //         ),
+                      //       ),
+                      //     );
+                      //   },
+                      // ),
                       
                       SizedBox(height: 30),
                     ],
