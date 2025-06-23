@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:cmc_travel_app/pages/stagiaire/screens/travel_details.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
@@ -30,16 +32,33 @@ class _HomeStagaireState extends State<HomeStagaire> {
   }
 
   Future<void> fetchVoyages() async {
-    final data = await supabase
-        .from('Voyage')
-        .select()
-        .then((res) => res as List<dynamic>);
+    try {
+         
+      final response = await supabase
+          .from('Voyage')
+          .select('*, profiles(name)')
+          .eq('status', 'accepted')
+          .order('date', ascending: false);
 
-    setState(() {
-      travels = data.map((item) => Travel.fromMap(item)).toList();
-      _applyFilters();
-      isLoading = false;
-    });
+      debugPrint(
+        '************************ Fetched voyages: $response ***************************',
+      );
+
+      final List<dynamic> data = response;
+
+      setState(() {
+        debugPrint('Organizer: ${data[0]['profiles']}');
+        travels = data.map((item) => Travel.fromMap(item)).toList();
+        _applyFilters();
+        isLoading = false;
+      });
+    } catch (e, stackTrace) {
+      debugPrint('Error fetching voyages: $e');
+      debugPrint('$stackTrace');
+      setState(() {
+        isLoading = false;
+      });
+    }
   }
 
   void _applyFilters() {
@@ -149,7 +168,10 @@ class _HomeStagaireState extends State<HomeStagaire> {
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (context) => TravelDetails(),
+                                    builder:
+                                        (context) => TravelDetails(
+                                          travel: _displayedTravels[index],
+                                        ),
                                   ),
                                 ),
                               },
