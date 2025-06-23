@@ -5,6 +5,8 @@ import 'dart:io';
 import 'package:path/path.dart' as path;
 
 class OrgModifyPage extends StatefulWidget {
+  const OrgModifyPage({super.key});
+
   @override
   _OrgModifyPageState createState() => _OrgModifyPageState();
 }
