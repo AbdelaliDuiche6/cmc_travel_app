@@ -12,11 +12,6 @@ void main() async {
     url: "https://fhdtzxdrauwaimonbjkz.supabase.co",
   );
 
-  // final notificationService = NotificationService();
-  // await notificationService.initFCM();
-  //
-  // // Définir la fonction pour gérer les messages en arrière-plan
-  // FirebaseMessaging.onBackgroundMessage(handleBackgroundMessage);
 
   runApp(const MyApp());
 }
