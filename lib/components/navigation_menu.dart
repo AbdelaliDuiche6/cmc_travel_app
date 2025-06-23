@@ -13,7 +13,7 @@ class NavigationMenu extends StatelessWidget {
     return Scaffold(
       body: const Center(child: Text('Main Page')), // or a landing widget
       bottomNavigationBar: NavigationBar(
-        height: 80,
+        height: 50,
         elevation: 0,
         
         selectedIndex: 0, // can ignore selection state if you push pages
