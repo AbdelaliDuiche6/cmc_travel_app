@@ -28,7 +28,7 @@ class _OrgHomePageState extends State<OrgHomePage> {
   String searchQuery = '';
   String profilePictureUrl = '';
   int pendingBookingsCount = 0;
-  
+
   StreamSubscription<List<Map<String, dynamic>>>? _tripsSubscription;
   Timer? _refreshTimer;
 
@@ -64,8 +64,10 @@ class _OrgHomePageState extends State<OrgHomePage> {
             setState(() {
               trips = data.map((e) => e as Map<String, dynamic>).toList();
               trips.sort((a, b) {
-                final dateA = DateTime.tryParse(a['date'] ?? '') ?? DateTime.now();
-                final dateB = DateTime.tryParse(b['date'] ?? '') ?? DateTime.now();
+                final dateA =
+                    DateTime.tryParse(a['date'] ?? '') ?? DateTime.now();
+                final dateB =
+                    DateTime.tryParse(b['date'] ?? '') ?? DateTime.now();
                 return dateB.compareTo(dateA);
               });
               _filterTrips();
@@ -86,16 +88,17 @@ class _OrgHomePageState extends State<OrgHomePage> {
     if (searchQuery.isEmpty) {
       filteredTrips = trips;
     } else {
-      filteredTrips = trips.where((trip) {
-        final title = trip['title']?.toString().toLowerCase() ?? '';
-        return title.contains(searchQuery);
-      }).toList();
+      filteredTrips =
+          trips.where((trip) {
+            final title = trip['title']?.toString().toLowerCase() ?? '';
+            return title.contains(searchQuery);
+          }).toList();
     }
   }
 
   Future<void> _refreshData() async {
     if (!mounted) return;
-    
+
     setState(() {
       isRefreshing = true;
     });
@@ -113,34 +116,36 @@ class _OrgHomePageState extends State<OrgHomePage> {
     }
   }
 
-  bool _isTripApproved(String status) {
-    final normalizedStatus = status.toLowerCase();
-    return normalizedStatus == 'accepted';
-  }
+  bool _isTripEditable(String status) {
+  final normalizedStatus = status.toLowerCase();
+  return normalizedStatus == 'false' || 
+         normalizedStatus == 'pending' || 
+         normalizedStatus == 'rejected';
+}
 
   Map<String, dynamic> _getStatusInfo(String status) {
     final normalizedStatus = status.toLowerCase();
-    
+
     if (normalizedStatus == 'accepted') {
       return {
         'color': Colors.green,
         'icon': Icons.check_circle,
         'text': 'Accepted',
-        'description': 'Trip accepted by admin'
+        'description': 'Trip accepted by admin',
       };
     } else if (normalizedStatus == 'rejected') {
       return {
         'color': Colors.red,
         'icon': Icons.cancel,
         'text': 'Rejected',
-        'description': 'Trip rejected by admin'
+        'description': 'Trip rejected by admin',
       };
     } else {
       return {
         'color': Colors.orange,
         'icon': Icons.pending,
         'text': 'Pending',
-        'description': 'Waiting for admin approval'
+        'description': 'Waiting for admin approval',
       };
     }
   }
@@ -157,11 +162,7 @@ class _OrgHomePageState extends State<OrgHomePage> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            statusInfo['icon'],
-            size: 14,
-            color: statusInfo['color'],
-          ),
+          Icon(statusInfo['icon'], size: 14, color: statusInfo['color']),
           SizedBox(width: 4),
           Text(
             statusInfo['text'],
@@ -177,42 +178,45 @@ class _OrgHomePageState extends State<OrgHomePage> {
   }
 
   Future<void> _loadPendingBookingsCount() async {
-    try {
-      final user = supabase.auth.currentUser;
-      if (user == null) return;
+  try {
+    final user = supabase.auth.currentUser;
+    if (user == null) return;
 
-      final response = await supabase
-          .from('Reservation')
-          .select('id')
-          .eq('organizer_id', user.id)
-          .eq('payment_state', 'pending');
+    final response = await supabase
+        .from('Reservation')
+        .select('id, payment_state')
+        .eq('organizer_id', user.id)
+        .eq('payment_state', false);
 
-      if (mounted) {
-        setState(() {
-          pendingBookingsCount = response.length;
-        });
-      }
-    } catch (e) {
-      print('Error loading pending reservation count: $e');
+    if (mounted) {
+      setState(() {
+        pendingBookingsCount = response.length;
+      });
     }
+  } catch (e) {
+    print('Error loading pending reservation count: $e');
   }
+}
+
 
   Future<void> _loadProfilePicture() async {
     final user = supabase.auth.currentUser;
     if (user == null) return;
 
     try {
-      final response = await supabase
-          .from('profiles')
-          .select('image_url')
-          .eq('id', user.id)
-          .single();
+      final response =
+          await supabase
+              .from('profiles')
+              .select('image_url')
+              .eq('id', user.id)
+              .single();
 
       final picturePath = response['image_url'];
       if (picturePath != null && picturePath.isNotEmpty) {
-        String cleanPath = picturePath.startsWith('/')
-            ? picturePath.substring(1)
-            : picturePath;
+        String cleanPath =
+            picturePath.startsWith('/')
+                ? picturePath.substring(1)
+                : picturePath;
 
         final profilePicUrl = supabase.storage
             .from('profile-images')
@@ -266,19 +270,17 @@ class _OrgHomePageState extends State<OrgHomePage> {
     try {
       print('Deleting trip with id: $id, type: ${id.runtimeType}');
 
-      final tripResponse = await supabase
-          .from('Voyage')
-          .select('image_url')
-          .eq('id', id)
-          .single();
+      final tripResponse =
+          await supabase
+              .from('Voyage')
+              .select('image_url')
+              .eq('id', id)
+              .single();
 
       final imageUrl = tripResponse['image_url'] as String?;
-      
-      final response = await supabase
-          .from('Voyage')
-          .delete()
-          .eq('id', id)
-          .select();
+
+      final response =
+          await supabase.from('Voyage').delete().eq('id', id).select();
 
       print('Delete response: $response');
 
@@ -289,7 +291,7 @@ class _OrgHomePageState extends State<OrgHomePage> {
       if (imageUrl != null && imageUrl.isNotEmpty) {
         try {
           String imagePath;
-          
+
           if (imageUrl.startsWith('http')) {
             final uri = Uri.parse(imageUrl);
             final pathSegments = uri.pathSegments;
@@ -301,7 +303,8 @@ class _OrgHomePageState extends State<OrgHomePage> {
               throw Exception('Could not parse image URL path');
             }
           } else {
-            imagePath = imageUrl.startsWith('/') ? imageUrl.substring(1) : imageUrl;
+            imagePath =
+                imageUrl.startsWith('/') ? imageUrl.substring(1) : imageUrl;
           }
 
           print('Attempting to delete image at path: $imagePath');
@@ -311,7 +314,6 @@ class _OrgHomePageState extends State<OrgHomePage> {
               .remove([imagePath]);
 
           print('Storage delete response: $storageResponse');
-          
         } catch (storageError) {
           print('Error deleting image from storage: $storageError');
         }
@@ -324,15 +326,17 @@ class _OrgHomePageState extends State<OrgHomePage> {
         });
 
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Trip and associated image deleted successfully"))
+          SnackBar(
+            content: Text("Trip and associated image deleted successfully"),
+          ),
         );
       }
-      
     } catch (e) {
       print('Error deleting trip: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Failed to delete trip: ${e.toString()}"))
+          SnackBar(content: Text("Failed to delete trip: ${e.toString()}")),
+
         );
       }
     }
@@ -365,10 +369,11 @@ class _OrgHomePageState extends State<OrgHomePage> {
               ),
               child: Center(
                 child: CircularProgressIndicator(
-                  value: loadingProgress.expectedTotalBytes != null
-                      ? loadingProgress.cumulativeBytesLoaded /
-                          loadingProgress.expectedTotalBytes!
-                      : null,
+                  value:
+                      loadingProgress.expectedTotalBytes != null
+                          ? loadingProgress.cumulativeBytesLoaded / 
+                              loadingProgress.expectedTotalBytes!
+                          : null,
                 ),
               ),
             );
@@ -403,82 +408,69 @@ class _OrgHomePageState extends State<OrgHomePage> {
   Widget _buildTripCard(Map<String, dynamic> trip) {
     final status = trip['status'] ?? 'en_cours';
     final statusInfo = _getStatusInfo(status);
-    
+
     return InkWell(
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (context) => TripDetailsPage(trip: trip),
-          ),
+          MaterialPageRoute(builder: (context) => TripDetailsPage(trip: trip)),
         );
       },
       borderRadius: BorderRadius.circular(12),
       child: Card(
         margin: EdgeInsets.only(bottom: 15),
         elevation: 3,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Stack(
               children: [
                 ClipRRect(
-                  borderRadius: BorderRadius.vertical(
-                    top: Radius.circular(12),
-                  ),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
                   child: Container(
                     height: 150,
                     width: double.infinity,
                     color: Colors.grey[200],
                     child: trip['image_url'] != null
                         ? Image.network(
-                          trip['image_url'],
-                          fit: BoxFit.cover,
-                          loadingBuilder: (
-                            context,
-                            child,
-                            loadingProgress,
-                          ) {
-                            if (loadingProgress == null) return child;
-                            return Center(
-                              child: CircularProgressIndicator(
-                                value: loadingProgress.expectedTotalBytes != null
-                                    ? loadingProgress.cumulativeBytesLoaded /
-                                        loadingProgress.expectedTotalBytes!
-                                    : null,
-                              ),
-                            );
-                          },
-                          errorBuilder: (
-                            context,
-                            error,
-                            stackTrace,
-                          ) {
-                            return Center(
-                              child: Icon(
-                                Icons.broken_image,
-                                size: 50,
-                              ),
-                            );
-                          },
-                        )
+                            trip['image_url'],
+                            fit: BoxFit.cover,
+                            loadingBuilder: (
+                              context,
+                              child,
+                              loadingProgress,
+                            ) {
+                              if (loadingProgress == null) return child;
+                              return Center(
+                                child: CircularProgressIndicator(
+                                  value:
+                                      loadingProgress.expectedTotalBytes !=
+                                              null
+                                          ? loadingProgress
+                                                  .cumulativeBytesLoaded /
+                                              loadingProgress
+                                                  .expectedTotalBytes!
+                                          : null,
+                                ),
+                              );
+                            },
+                            errorBuilder: (context, error, stackTrace) {
+                              return Center(
+                                child: Icon(Icons.broken_image, size: 50),
+                              );
+                            },
+                          )
                         : Center(
-                          child: Icon(
-                            Icons.photo,
-                            size: 50,
-                            color: Colors.grey,
+                            child: Icon(
+                              Icons.photo,
+                              size: 50,
+                              color: Colors.grey,
+                            ),
                           ),
-                        ),
                   ),
                 ),
-                Positioned(
-                  top: 10,
-                  right: 10,
-                  child: _buildStatusChip(status),
-                ),
+                Positioned(top: 10, right: 10, child: _buildStatusChip(status)),
               ],
             ),
             Padding(
@@ -514,8 +506,9 @@ class _OrgHomePageState extends State<OrgHomePage> {
                       SizedBox(width: 5),
                       Text(
                         trip['date'] != null
-                            ? DateFormat('MMM dd, yyyy')
-                                .format(DateTime.parse(trip['date']))
+                            ? DateFormat(
+                              'MMM dd, yyyy',
+                            ).format(DateTime.parse(trip['date']))
                             : '-',
                       ),
                     ],
@@ -535,33 +528,35 @@ class _OrgHomePageState extends State<OrgHomePage> {
                     children: [
                       Icon(Icons.people, size: 16),
                       SizedBox(width: 5),
-                      Text(
-                        '${trip['free_places'] ?? '-'}/${trip['nbr_places'] ?? '-'} seats left',
-                      ),
+                      Text('${trip['nbr_places'] ?? '-'} seats'),
                     ],
                   ),
+
                   SizedBox(height: 10),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
                       ElevatedButton.icon(
-                        onPressed: _isTripApproved(status)
-                            ? () async {
-                              final result = await Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => EditTripPage(trip: trip),
-                                ),
-                              );
-                              if (result == true) fetchTrips();
-                            }
-                            : null,
+                        onPressed:
+                            _isTripEditable(status)
+                                ? () async {
+                                    final result = await Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder:
+                                            (context) => EditTripPage(trip: trip),
+                                      ),
+                                    );
+                                    if (result == true) fetchTrips();
+                                  }
+                                : null,
                         icon: Icon(Icons.edit, size: 18),
                         label: Text("Edit"),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: _isTripApproved(status)
-                              ? Colors.blue
-                              : Colors.grey,
+                          backgroundColor:
+                              _isTripEditable(status)
+                                  ? Colors.blue
+                                  : Colors.grey,
                           foregroundColor: Colors.white,
                         ),
                       ),
@@ -570,30 +565,29 @@ class _OrgHomePageState extends State<OrgHomePage> {
                         onPressed: () {
                           showDialog(
                             context: context,
-                            builder: (context) => AlertDialog(
-                              title: Text("Confirm Delete"),
-                              content: Text(
-                                "Are you sure you want to delete this trip? This action cannot be undone.",
-                              ),
-                              actions: [
-                                TextButton(
-                                  child: Text("Cancel"),
-                                  onPressed: () => Navigator.pop(context),
-                                ),
-                                TextButton(
-                                  child: Text(
-                                    "Delete",
-                                    style: TextStyle(
-                                      color: Colors.red,
-                                    ),
+                            builder:
+                                (context) => AlertDialog(
+                                  title: Text("Confirm Delete"),
+                                  content: Text(
+                                    "Are you sure you want to delete this trip? This action cannot be undone.",
                                   ),
-                                  onPressed: () {
-                                    Navigator.pop(context);
-                                    deleteTrip(trip['id']);
-                                  },
+                                  actions: [
+                                    TextButton(
+                                      child: Text("Cancel"),
+                                      onPressed: () => Navigator.pop(context),
+                                    ),
+                                    TextButton(
+                                      child: Text(
+                                        "Delete",
+                                        style: TextStyle(color: Colors.red),
+                                      ),
+                                      onPressed: () {
+                                        Navigator.pop(context);
+                                        deleteTrip(trip['id']);
+                                      },
+                                    ),
+                                  ],
                                 ),
-                              ],
-                            ),
                           );
                         },
                         icon: Icon(Icons.delete, size: 18),
@@ -644,18 +638,6 @@ class _OrgHomePageState extends State<OrgHomePage> {
                             Colors.black.withOpacity(0.7),
                             Colors.transparent,
                           ],
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      top: 210.0,
-                      left: 20.0,
-                      child: Text(
-                        "CMC TRAVEL",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 50.0,
-                          fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),
@@ -729,9 +711,7 @@ class _OrgHomePageState extends State<OrgHomePage> {
                     onTap: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(
-                          builder: (context) => AddTripPage(),
-                        ),
+                        MaterialPageRoute(builder: (context) => AddTripPage()),
                       ).then((_) => fetchTrips());
                     },
                     child: Material(
@@ -743,11 +723,7 @@ class _OrgHomePageState extends State<OrgHomePage> {
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: Icon(
-                          Icons.add,
-                          color: Colors.black,
-                          size: 30.0,
-                        ),
+                        child: Icon(Icons.add, color: Colors.black, size: 30.0),
                       ),
                     ),
                   ),
@@ -774,7 +750,11 @@ class _OrgHomePageState extends State<OrgHomePage> {
               bottom: PreferredSize(
                 preferredSize: Size.fromHeight(70),
                 child: Padding(
-                  padding: const EdgeInsets.only(bottom: 20.0, left: 20.0, right: 20.0),
+                  padding: const EdgeInsets.only(
+                    bottom: 20.0,
+                    left: 20.0,
+                    right: 20.0,
+                  ),
                   child: Material(
                     elevation: 5.0,
                     borderRadius: BorderRadius.circular(10.0),
@@ -828,13 +808,10 @@ class _OrgHomePageState extends State<OrgHomePage> {
               SliverPadding(
                 padding: EdgeInsets.symmetric(horizontal: 20, vertical: 20),
                 sliver: SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      final trip = filteredTrips[index];
-                      return _buildTripCard(trip);
-                    },
-                    childCount: filteredTrips.length,
-                  ),
+                  delegate: SliverChildBuilderDelegate((context, index) {
+                    final trip = filteredTrips[index];
+                    return _buildTripCard(trip);
+                  }, childCount: filteredTrips.length),
                 ),
               ),
           ],
