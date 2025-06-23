@@ -42,7 +42,7 @@ dependencies:
   intl: ^0.18.1
   cached_network_image: ^3.2.3
   crypto: ^3.0.3
-
+  flutter_pdfview: ^1.2.5
 
 
 dev_dependencies:
