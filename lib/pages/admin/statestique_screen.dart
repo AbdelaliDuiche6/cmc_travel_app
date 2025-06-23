@@ -3,10 +3,11 @@ import 'package:cmc_travel_app/pages/admin/profile_screen.dart';
 import 'package:cmc_travel_app/pages/admin/users_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:animate_do/animate_do.dart';
+import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:percent_indicator/percent_indicator.dart';
-
+import 'package:flutter_svg/flutter_svg.dart';
 class StatestiquePage extends StatefulWidget {
   const StatestiquePage({super.key});
 
@@ -16,6 +17,7 @@ class StatestiquePage extends StatefulWidget {
 
 class _StatestiquePageState extends State<StatestiquePage> {
   final Color primaryColor = const Color.fromARGB(255, 26, 142, 234);
+  final Color secondaryColor = Color.fromARGB(255, 0, 0, 0);
   final supabase = Supabase.instance.client;
 
   int totalVoyages = 0;
@@ -25,6 +27,9 @@ class _StatestiquePageState extends State<StatestiquePage> {
   int totalUsers = 0;
   int totalStag = 0;
   int totalOrg = 0;
+  int totalRes = 0;
+  int reservationEncour = 0;
+  int reservationTerminee = 0;
 
   bool isLoading = true;
 
@@ -38,15 +43,24 @@ class _StatestiquePageState extends State<StatestiquePage> {
     try {
       final voyages = await supabase.from('Voyage').select();
       final users = await supabase.from('profiles').select();
+      final reservations = await supabase.from('Reservation').select();
 
       setState(() {
         totalVoyages = voyages.length;
         totalUsers = users.length - 1;
-        acceptedVoyages = voyages.where((v) => v['status'] == 'accepted').length;
-        rejectedVoyages = voyages.where((v) => v['status'] == 'rejected').length;
+        acceptedVoyages =
+            voyages.where((v) => v['status'] == 'accepted').length;
+        rejectedVoyages =
+            voyages.where((v) => v['status'] == 'rejected').length;
         pendingVoyages = voyages.where((v) => v['status'] == 'en_cours').length;
         totalStag = users.where((u) => u['role'] == "stagiaire").length;
         totalOrg = users.where((u) => u['role'] == 'organisateur').length;
+        totalRes = reservations.length;
+        reservationEncour =
+            reservations.where((r) => r['payment_state'] == false).length;
+        reservationTerminee =
+            reservations.where((r) => r['payment_state'] == true).length;
+
         isLoading = false;
       });
     } catch (e) {
@@ -57,7 +71,14 @@ class _StatestiquePageState extends State<StatestiquePage> {
     }
   }
 
-  Widget _buildStatCard(String title, String value, IconData icon, {Color color = Colors.blue}) {
+  
+
+Widget _buildStatCard(
+  String title,
+  String value,
+  String svgAssetPath, {
+  Color color = Colors.blue,
+}) {
   return Container(
     margin: const EdgeInsets.symmetric(vertical: 10),
     decoration: BoxDecoration(
@@ -86,7 +107,12 @@ class _StatestiquePageState extends State<StatestiquePage> {
               color: color.withOpacity(0.2),
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: color, size: 30),
+            child: SvgPicture.asset(
+              svgAssetPath,
+              width: 30,
+              height: 30,
+              colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+            ),
           ),
           const SizedBox(width: 20),
           Expanded(
@@ -126,16 +152,28 @@ class _StatestiquePageState extends State<StatestiquePage> {
     setState(() => _selectedIndex = index);
     switch (index) {
       case 0:
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const AdminScreen()));
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const AdminScreen()),
+        );
         break;
       case 1:
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const UsersScreen()));
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const UsersScreen()),
+        );
         break;
       case 2:
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const StatestiquePage()));
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const StatestiquePage()),
+        );
         break;
       case 3:
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const ProfileScreen()));
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const ProfileScreen()),
+        );
         break;
     }
   }
@@ -145,19 +183,6 @@ class _StatestiquePageState extends State<StatestiquePage> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: FadeIn(
-          duration: const Duration(milliseconds: 800),
-          child: const Text(
-            'Statestique',
-            style: TextStyle(
-              fontSize: 20.0,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
-        ),
-        centerTitle: true,
-        backgroundColor: primaryColor,
         elevation: 0,
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(
@@ -165,102 +190,211 @@ class _StatestiquePageState extends State<StatestiquePage> {
           ),
         ),
         toolbarHeight: 70,
-        // actions: [
-        //   BounceInRight(
-        //     duration: const Duration(milliseconds: 1000),
-        //     child: IconButton(
-        //       icon: const Icon(Icons.notifications, size: 26),
-        //       onPressed: () {},
-        //       color: Colors.white,
-        //     ),
-        //   ),
-        // ],
-      ),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const SizedBox(height: 8),
-                  FadeInUp(
-                    duration: const Duration(milliseconds: 300),
-                    child: _buildStatCard("Total Voyages", totalVoyages.toString(), Icons.flight_takeoff, color: primaryColor),
-                  ),
-                  const SizedBox(height: 30),
-                  FadeInUp(
-                    duration: const Duration(milliseconds: 500),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        buildCircularStat(label: 'Acceptés', value: acceptedVoyages, total: totalVoyages, color: Colors.green),
-                        buildCircularStat(label: 'Rejetés', value: rejectedVoyages, total: totalVoyages, color: Colors.red),
-                        buildCircularStat(label: 'En Attente', value: pendingVoyages, total: totalVoyages, color: Colors.orange),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 30),
-                  FadeInUp(
-                    duration: const Duration(milliseconds: 700),
-                    child: _buildStatCard("Utilisateurs", totalUsers.toString(), Icons.people, color: Colors.blueGrey),
-                  ),
-                  const SizedBox(height: 30),
-                  FadeInUp(
-                    duration: const Duration(milliseconds: 500),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        buildCircularStat(label: 'Stagiaire', value: totalStag, total: totalUsers, color: Colors.blueGrey),
-                        buildCircularStat(label: 'Oraganisateur', value: totalOrg, total: totalUsers, color: Color(0xFFFF8A65)),
-                      
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+        backgroundColor: primaryColor,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                primaryColor,
+                primaryColor.withOpacity(0.8),
+              ],
             ),
+          ),
+        ),
+        title: const Text(
+          "Commands Trips",
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 0.5,
+          ),
+        ),
+
+        centerTitle: true,
+      ),
+      body:
+          isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const SizedBox(height: 8),
+                    FadeInUp(
+                      duration: const Duration(milliseconds: 300),
+                      child: _buildStatCard(
+                        "Total Voyages",
+                        totalVoyages.toString(),
+                        "assets/images/trip.svg",
+                        color: primaryColor,
+                      ),
+                    ),
+                    const SizedBox(height: 30),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,  // Pour permettre le défilement horizontal
+                      child: FadeInUp(
+                        duration: const Duration(milliseconds: 500),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            buildCircularStat(
+                              label: 'Acceptés',
+                              value: acceptedVoyages,
+                              total: totalVoyages,
+                              color: Colors.green,
+                            ),
+                            SizedBox(width: 10,),
+                            buildCircularStat(
+                              label: 'Rejetés',
+                              value: rejectedVoyages,
+                              total: totalVoyages,
+                              color: Colors.red,
+                            ),
+                            SizedBox(width: 10,),
+                            buildCircularStat(
+                              label: 'En Attente',
+                              value: pendingVoyages,
+                              total: totalVoyages,
+                              color: Colors.orange,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 30),
+                    FadeInUp(
+                      duration: const Duration(milliseconds: 700),
+                      child: _buildStatCard(
+                        "Utilisateurs",
+                        totalUsers.toString(),
+                        "assets/images/users.svg",
+                        color: Colors.blueGrey,
+                      ),
+                    ),
+                    const SizedBox(height: 30),
+                    FadeInUp(
+                      duration: const Duration(milliseconds: 500),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          buildCircularStat(
+                            label: 'Stagiaire',
+                            value: totalStag,
+                            total: totalUsers,
+                            color: Colors.blueGrey,
+                          ),
+                          buildCircularStat(
+                            label: 'Oraganisateur',
+                            value: totalOrg,
+                            total: totalUsers,
+                            color: Color(0xFFFF8A65),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 30),
+                    FadeInUp(
+                      duration: const Duration(milliseconds: 700),
+                      child: _buildStatCard(
+                        "Reservations",
+                        totalRes.toString(),
+                        "assets/images/reservation.svg",
+                        color: Colors.blueGrey,
+                      ),
+                    ),
+                    const SizedBox(height: 30),
+                    FadeInUp(
+                      duration: const Duration(milliseconds: 500),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          buildCircularStat(
+                            label: 'En Cours',
+                            value: reservationEncour,
+                            total: totalRes,
+                            color: Colors.red,
+                          ),
+                          buildCircularStat(
+                            label: 'Payée',
+                            value: reservationTerminee,
+                            total: totalRes,
+                            color: Colors.green,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Colors.white.withOpacity(0.95), Colors.white],
+          ),
           boxShadow: [
             BoxShadow(
-              color: Colors.grey.withOpacity(0.1),
-              spreadRadius: 1,
-              blurRadius: 10,
+              color: Colors.grey.withOpacity(0.08),
+              blurRadius: 20,
+              offset: const Offset(0, -8),
+              spreadRadius: 0,
+            ),
+            BoxShadow(
+              color: primaryColor.withOpacity(0.05),
+              blurRadius: 40,
               offset: const Offset(0, -2),
+              spreadRadius: -5,
             ),
           ],
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         ),
         child: ClipRRect(
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
           child: NavigationBar(
-            height: 70,
+            height: 85,
             selectedIndex: _selectedIndex,
-            onDestinationSelected: _navigate,
-            backgroundColor: Colors.white,
-            indicatorColor: primaryColor.withOpacity(0.2),
+            onDestinationSelected: (index) {
+              HapticFeedback.lightImpact(); // Add haptic feedback
+              setState(() => _selectedIndex = index);
+              _navigate(index);
+            },
+            backgroundColor: Colors.transparent,
+            indicatorColor: primaryColor.withOpacity(0.15),
+            indicatorShape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
             labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-            animationDuration: const Duration(milliseconds: 300),
+            animationDuration: const Duration(milliseconds: 400),
             destinations: [
-              NavigationDestination(
-                icon: Icon(Icons.home_outlined, color: Colors.grey[600]),
-                selectedIcon: Icon(Icons.home, color: primaryColor),
+              _buildAnimatedDestination(
+                index: 0,
+                selectedIcon: Icons.home_rounded,
+                unselectedIcon: Icons.home_outlined,
                 label: 'Home',
               ),
-              NavigationDestination(
-                icon: Icon(Icons.people_outline, color: Colors.grey[600]),
-                selectedIcon: Icon(Icons.people, color: primaryColor),
+              _buildAnimatedDestination(
+                index: 1,
+                selectedIcon: Icons.people_rounded,
+                unselectedIcon: Icons.people_outline_rounded,
                 label: 'Users',
               ),
-              NavigationDestination(
-                icon: Icon(Icons.bar_chart_outlined, color: Colors.grey[600]),
-                selectedIcon: Icon(Icons.bar_chart, color: primaryColor),
+              _buildAnimatedDestination(
+                index: 2,
+                selectedIcon: Icons.bar_chart_rounded,
+                unselectedIcon: Icons.bar_chart_outlined,
                 label: 'Stats',
               ),
-              NavigationDestination(
-                icon: Icon(Icons.person_outline, color: Colors.grey[600]),
-                selectedIcon: Icon(Icons.person, color: primaryColor),
+              _buildAnimatedDestination(
+                index: 3,
+                selectedIcon: Icons.person_rounded,
+                unselectedIcon: Icons.person_outline_rounded,
                 label: 'Profile',
               ),
             ],
@@ -270,7 +404,63 @@ class _StatestiquePageState extends State<StatestiquePage> {
     );
   }
 
-  Widget buildVoyageBarChart({required int accepted, required int rejected, required int pending}) {
+  NavigationDestination _buildAnimatedDestination({
+    required int index,
+    required IconData selectedIcon,
+    required IconData unselectedIcon,
+    required String label,
+  }) {
+    final isSelected = _selectedIndex == index;
+
+    return NavigationDestination(
+      icon: TweenAnimationBuilder<double>(
+        duration: const Duration(milliseconds: 300),
+        tween: Tween<double>(begin: 0.0, end: isSelected ? 1.0 : 0.0),
+        curve: Curves.elasticOut,
+        builder: (context, value, child) {
+          return Transform.scale(
+            scale: 1.0 + (value * 0.15), // Scale animation
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: EdgeInsets.all(isSelected ? 8.0 : 4.0),
+              decoration: BoxDecoration(
+                color:
+                    isSelected
+                        ? primaryColor.withOpacity(0.1)
+                        : Colors.transparent,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 250),
+                transitionBuilder: (child, animation) {
+                  return RotationTransition(
+                    turns: animation,
+                    child: ScaleTransition(scale: animation, child: child),
+                  );
+                },
+                child: Icon(
+                  isSelected ? selectedIcon : unselectedIcon,
+                  color:
+                      isSelected
+                          ? primaryColor
+                          : secondaryColor.withOpacity(0.8),
+                  size: isSelected ? 26 : 24,
+                  key: ValueKey<bool>(isSelected),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+      label: label,
+    );
+  }
+
+  Widget buildVoyageBarChart({
+    required int accepted,
+    required int rejected,
+    required int pending,
+  }) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -297,10 +487,18 @@ class _StatestiquePageState extends State<StatestiquePage> {
             child: BarChart(
               BarChartData(
                 alignment: BarChartAlignment.spaceAround,
-                maxY: ([accepted.toDouble(), rejected.toDouble(), pending.toDouble()].reduce((a, b) => a > b ? a : b)) + 5,
+                maxY:
+                    ([
+                      accepted.toDouble(),
+                      rejected.toDouble(),
+                      pending.toDouble(),
+                    ].reduce((a, b) => a > b ? a : b)) +
+                    5,
                 barTouchData: BarTouchData(enabled: false),
                 titlesData: FlTitlesData(
-                  leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true)),
+                  leftTitles: AxisTitles(
+                    sideTitles: SideTitles(showTitles: true),
+                  ),
                   bottomTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
@@ -321,15 +519,36 @@ class _StatestiquePageState extends State<StatestiquePage> {
                 ),
                 borderData: FlBorderData(show: false),
                 barGroups: [
-                  BarChartGroupData(x: 0, barRods: [
-                    BarChartRodData(toY: accepted.toDouble(), color: Colors.green, borderRadius: BorderRadius.circular(4)),
-                  ]),
-                  BarChartGroupData(x: 1, barRods: [
-                    BarChartRodData(toY: rejected.toDouble(), color: Colors.redAccent, borderRadius: BorderRadius.circular(4)),
-                  ]),
-                  BarChartGroupData(x: 2, barRods: [
-                    BarChartRodData(toY: pending.toDouble(), color: Colors.orange, borderRadius: BorderRadius.circular(4)),
-                  ]),
+                  BarChartGroupData(
+                    x: 0,
+                    barRods: [
+                      BarChartRodData(
+                        toY: accepted.toDouble(),
+                        color: Colors.green,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ],
+                  ),
+                  BarChartGroupData(
+                    x: 1,
+                    barRods: [
+                      BarChartRodData(
+                        toY: rejected.toDouble(),
+                        color: Colors.redAccent,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ],
+                  ),
+                  BarChartGroupData(
+                    x: 2,
+                    barRods: [
+                      BarChartRodData(
+                        toY: pending.toDouble(),
+                        color: Colors.orange,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -339,7 +558,12 @@ class _StatestiquePageState extends State<StatestiquePage> {
     );
   }
 
-  Widget buildCircularStat({required String label, required int value, required int total, Color color = Colors.blue}) {
+  Widget buildCircularStat({
+    required String label,
+    required int value,
+    required int total,
+    Color color = Colors.blue,
+  }) {
     final double percent = total == 0 ? 0 : value / total;
 
     return Column(
@@ -359,7 +583,10 @@ class _StatestiquePageState extends State<StatestiquePage> {
           backgroundColor: color.withOpacity(0.1),
         ),
         const SizedBox(height: 8),
-        Text(label, style: TextStyle(fontWeight: FontWeight.w600, color: color)),
+        Text(
+          label,
+          style: TextStyle(fontWeight: FontWeight.w600, color: color),
+        ),
       ],
     );
   }
