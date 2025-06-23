@@ -8,7 +8,7 @@ import 'package:path/path.dart' as path;
 class EditTripPage extends StatefulWidget {
   final Map<String, dynamic> trip;
 
-  const EditTripPage({Key? key, required this.trip}) : super(key: key);
+  const EditTripPage({super.key, required this.trip});
 
   @override
   _EditTripPageState createState() => _EditTripPageState();
@@ -17,6 +17,7 @@ class EditTripPage extends StatefulWidget {
 class _EditTripPageState extends State<EditTripPage> {
   final _formKey = GlobalKey<FormState>();
   final String _bucketName = 'trip-images';
+  final String _programBucketName = 'trip-files';
 
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
@@ -26,24 +27,15 @@ class _EditTripPageState extends State<EditTripPage> {
 
   DateTime? _selectedDate;
   File? _image;
-  String? _programPath;
+  File? _programFile;
   String? _type;
-  String? _status;
   bool _isUploading = false;
+  String? _currentPdfName;
 
   final List<String> _types = [
-    'City/site tour',
-    'Event/Festival',
-    'Sports/Cultural activity',
-  ];
-
-  final List<String> _statuses = [
-    'Published',
-    'Available',
-    'Closed',
-    'rejected',
-    'accepted',
-    'en_cours',
+    'City',
+    'Event',
+    'Sport',
   ];
 
   @override
@@ -52,19 +44,18 @@ class _EditTripPageState extends State<EditTripPage> {
     _titleController.text = widget.trip['title'] ?? '';
     _descriptionController.text = widget.trip['description'] ?? '';
     _type = widget.trip['type'];
-    _status = widget.trip['status'];
     _priceController.text = widget.trip['price_per_person']?.toString() ?? '';
     _seatsController.text = widget.trip['nbr_places']?.toString() ?? '';
-    _programPath = widget.trip['program'];
-
     _selectedDate = DateTime.tryParse(widget.trip['date'] ?? '');
-    _dateController.text = _selectedDate != null
-        ? _selectedDate!.toIso8601String().split('T').first
-        : '';
-
-    final imgPath = widget.trip['img'];
-    if (imgPath != null && File(imgPath).existsSync()) {
-      _image = File(imgPath);
+    _dateController.text =
+        _selectedDate != null
+            ? _selectedDate!.toIso8601String().split('T').first
+            : '';
+    
+    // Extract PDF name from URL if exists
+    if (widget.trip['program_url'] != null) {
+      String url = widget.trip['program_url'];
+      _currentPdfName = url.split('/').last.split('?').first; // Remove query parameters
     }
   }
 
@@ -79,12 +70,22 @@ class _EditTripPageState extends State<EditTripPage> {
   }
 
   Future<void> _pickPDF() async {
-    final result = await FilePicker.platform
-        .pickFiles(type: FileType.custom, allowedExtensions: ['pdf']);
-    if (result != null) {
-      setState(() {
-        _programPath = result.files.single.path;
-      });
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf'],
+        allowMultiple: false,
+      );
+
+      if (result != null && result.files.single.path != null) {
+        setState(() {
+          _programFile = File(result.files.single.path!);
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error selecting PDF: ${e.toString()}')),
+      );
     }
   }
 
@@ -104,6 +105,70 @@ class _EditTripPageState extends State<EditTripPage> {
     }
   }
 
+  Future<String?> _uploadImage() async {
+    if (_image == null) return widget.trip['image_url'];
+
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user == null) throw Exception('User not authenticated');
+
+      final fileExtension = path.extension(_image!.path);
+      final fileName =
+          'trip_${DateTime.now().millisecondsSinceEpoch}$fileExtension';
+      final userFolder = user.id;
+
+      await Supabase.instance.client.storage
+          .from(_bucketName)
+          .upload(
+            '$userFolder/$fileName',
+            _image!,
+            fileOptions: FileOptions(cacheControl: '3600', upsert: false),
+          );
+
+      return Supabase.instance.client.storage
+          .from(_bucketName)
+          .getPublicUrl('$userFolder/$fileName');
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Image upload failed: ${e.toString()}')),
+      );
+      return null;
+    }
+  }
+
+  Future<String?> _uploadPDF() async {
+    if (_programFile == null) return widget.trip['program_url'];
+
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user == null) throw Exception('User not authenticated');
+
+      final fileName = 'program_${DateTime.now().millisecondsSinceEpoch}.pdf';
+      final userFolder = user.id;
+
+      await Supabase.instance.client.storage
+          .from(_programBucketName)
+          .upload(
+            '$userFolder/$fileName',
+            _programFile!,
+            fileOptions: FileOptions(
+              cacheControl: '3600',
+              upsert: false,
+              contentType: 'application/pdf',
+            ),
+          );
+
+      return Supabase.instance.client.storage
+          .from(_programBucketName)
+          .getPublicUrl('$userFolder/$fileName');
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('PDF upload failed: ${e.toString()}')),
+      );
+      return null;
+    }
+  }
+
   Future<void> _updateTrip() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -112,57 +177,35 @@ class _EditTripPageState extends State<EditTripPage> {
     });
 
     try {
-      final imageUrl = await _uploadImage();
-      if (imageUrl == null && _image != null) return;
+      String? imageUrl = await _uploadImage();
+      String? programUrl = await _uploadPDF();
 
-      await Supabase.instance.client.from('Voyage').update({
-        'image_url': imageUrl,
-        'title': _titleController.text,
-        'description': _descriptionController.text,
-        'type': _type,
-        'date': _selectedDate?.toIso8601String().split('T').first,
-        'price_per_person': double.tryParse(_priceController.text),
-        'nbr_places': int.tryParse(_seatsController.text),
-        'status': _status,
-        'program_url': _programPath,
-      }).eq('id', widget.trip['id']);
+      await Supabase.instance.client
+          .from('Voyage')
+          .update({
+            'image_url': imageUrl,
+            'title': _titleController.text,
+            'description': _descriptionController.text,
+            'type': _type,
+            'date': _selectedDate?.toIso8601String(),
+            'price_per_person': double.tryParse(_priceController.text),
+            'nbr_places': int.tryParse(_seatsController.text),
+            'program_url': programUrl,
+          })
+          .eq('id', widget.trip['id']);
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Trip updated successfully')),
       );
       Navigator.pop(context, true);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error updating trip: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error updating trip: $e')));
     } finally {
       setState(() {
         _isUploading = false;
       });
-    }
-  }
-
-  Future<String?> _uploadImage() async {
-    if (_image == null) return widget.trip['image_url'];
-
-    try {
-      final fileExtension = path.extension(_image!.path);
-      final fileName = 'trip_${DateTime.now().millisecondsSinceEpoch}$fileExtension';
-
-      await Supabase.instance.client.storage
-          .from(_bucketName)
-          .upload(fileName, _image!);
-
-      final imageUrl = Supabase.instance.client.storage
-          .from(_bucketName)
-          .getPublicUrl(fileName);
-
-      return imageUrl;
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Image upload failed: ${e.toString()}')),
-      );
-      return null;
     }
   }
 
@@ -199,23 +242,25 @@ class _EditTripPageState extends State<EditTripPage> {
                     decoration: BoxDecoration(
                       border: Border.all(color: Colors.black45, width: 2.0),
                       borderRadius: BorderRadius.circular(20),
-                      image: _getImageProvider() != null
-                          ? DecorationImage(
-                              image: _getImageProvider()!,
-                              fit: BoxFit.cover,
-                            )
-                          : null,
+                      image:
+                          _getImageProvider() != null
+                              ? DecorationImage(
+                                image: _getImageProvider()!,
+                                fit: BoxFit.cover,
+                              )
+                              : null,
                     ),
-                    child: _getImageProvider() == null
-                        ? const Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.camera_alt_outlined, size: 40),
-                              SizedBox(height: 8),
-                              Text('Tap to select image'),
-                            ],
-                          )
-                        : null,
+                    child:
+                        _getImageProvider() == null
+                            ? const Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.camera_alt_outlined, size: 40),
+                                SizedBox(height: 8),
+                                Text('Tap to select image'),
+                              ],
+                            )
+                            : null,
                   ),
                 ),
               ),
@@ -227,6 +272,9 @@ class _EditTripPageState extends State<EditTripPage> {
                   border: border,
                   enabledBorder: border,
                 ),
+                validator:
+                    (value) =>
+                        value == null || value.isEmpty ? 'Required' : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
@@ -237,6 +285,9 @@ class _EditTripPageState extends State<EditTripPage> {
                   border: border,
                   enabledBorder: border,
                 ),
+                validator:
+                    (value) =>
+                        value == null || value.isEmpty ? 'Required' : null,
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
@@ -246,11 +297,16 @@ class _EditTripPageState extends State<EditTripPage> {
                   border: border,
                   enabledBorder: border,
                 ),
-                items: _types
-                    .map((type) =>
-                        DropdownMenuItem(value: type, child: Text(type)))
-                    .toList(),
+                items:
+                    _types
+                        .map(
+                          (type) =>
+                              DropdownMenuItem(value: type, child: Text(type)),
+                        )
+                        .toList(),
                 onChanged: (value) => setState(() => _type = value),
+                validator:
+                    (value) => value == null ? 'Please select a type' : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
@@ -262,6 +318,9 @@ class _EditTripPageState extends State<EditTripPage> {
                   enabledBorder: border,
                 ),
                 onTap: _pickDate,
+                validator:
+                    (value) =>
+                        value == null || value.isEmpty ? 'Required' : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
@@ -272,6 +331,9 @@ class _EditTripPageState extends State<EditTripPage> {
                   border: border,
                   enabledBorder: border,
                 ),
+                validator:
+                    (value) =>
+                        value == null || value.isEmpty ? 'Required' : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
@@ -282,31 +344,69 @@ class _EditTripPageState extends State<EditTripPage> {
                   border: border,
                   enabledBorder: border,
                 ),
+                validator:
+                    (value) =>
+                        value == null || value.isEmpty ? 'Required' : null,
               ),
               const SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                value: _status,
-                decoration: InputDecoration(
-                  labelText: 'Status',
-                  border: border,
-                  enabledBorder: border,
+
+              // PDF Section - Simplified
+              Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey.shade300),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                items: _statuses
-                    .map((status) =>
-                        DropdownMenuItem(value: status, child: Text(status)))
-                    .toList(),
-                onChanged: (value) => setState(() => _status = value),
-              ),
-              const SizedBox(height: 16),
-              ListTile(
-                title: Text(
-                  _programPath == null
-                      ? 'Select PDF Program'
-                      : _programPath!.split('/').last,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Program PDF',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        const Icon(Icons.picture_as_pdf, color: Colors.red),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _programFile != null
+                                ? _programFile!.path.split('/').last
+                                : _currentPdfName != null
+                                    ? _currentPdfName!
+                                    : 'No PDF selected',
+                            style: const TextStyle(fontSize: 14),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: _pickPDF,
+                        icon: const Icon(Icons.upload_file),
+                        label: Text(_programFile != null || _currentPdfName != null
+                            ? 'Change PDF'
+                            : 'Select PDF'),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                trailing: const Icon(Icons.attach_file),
-                onTap: _pickPDF,
               ),
+
               const SizedBox(height: 32),
               SizedBox(
                 width: double.infinity,
@@ -320,11 +420,14 @@ class _EditTripPageState extends State<EditTripPage> {
                     backgroundColor: Colors.black,
                     foregroundColor: Colors.white,
                   ),
-                  child: _isUploading
-                      ? const CircularProgressIndicator(
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                        )
-                      : const Text('Save', style: TextStyle(fontSize: 16)),
+                  child:
+                      _isUploading
+                          ? const CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
+                          )
+                          : const Text('Save', style: TextStyle(fontSize: 16)),
                 ),
               ),
             ],
