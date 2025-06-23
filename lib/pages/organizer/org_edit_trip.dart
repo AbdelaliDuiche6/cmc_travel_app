@@ -1,61 +1,79 @@
-import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:file_picker/file_picker.dart';
 import 'dart:io';
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:path/path.dart' as path;
+import 'package:intl/intl.dart';
 
 class EditTripPage extends StatefulWidget {
   final Map<String, dynamic> trip;
-
+  
   const EditTripPage({super.key, required this.trip});
 
   @override
-  _EditTripPageState createState() => _EditTripPageState();
+  State<EditTripPage> createState() => _EditTripPageState();
 }
 
 class _EditTripPageState extends State<EditTripPage> {
   final _formKey = GlobalKey<FormState>();
+  final _supabase = Supabase.instance.client;
   final String _bucketName = 'trip-images';
   final String _programBucketName = 'trip-files';
 
-  final TextEditingController _titleController = TextEditingController();
-  final TextEditingController _descriptionController = TextEditingController();
-  final TextEditingController _priceController = TextEditingController();
-  final TextEditingController _seatsController = TextEditingController();
-  final TextEditingController _dateController = TextEditingController();
-
-  DateTime? _selectedDate;
+  String? _type;
+  DateTime? _date;
   File? _image;
   File? _programFile;
-  String? _type;
   bool _isUploading = false;
-  String? _currentPdfName;
+  bool _imageChanged = false;
+  bool _programChanged = false;
 
-  final List<String> _types = [
-    'City',
-    'Event',
-    'Sport',
-  ];
+  final _titleController = TextEditingController();
+  final _descController = TextEditingController();
+  final _priceController = TextEditingController();
+  final _seatsController = TextEditingController();
+  final _dateController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
+    // Initialize form fields with trip data
     _titleController.text = widget.trip['title'] ?? '';
-    _descriptionController.text = widget.trip['description'] ?? '';
+    _descController.text = widget.trip['description'] ?? '';
     _type = widget.trip['type'];
     _priceController.text = widget.trip['price_per_person']?.toString() ?? '';
     _seatsController.text = widget.trip['nbr_places']?.toString() ?? '';
-    _selectedDate = DateTime.tryParse(widget.trip['date'] ?? '');
-    _dateController.text =
-        _selectedDate != null
-            ? _selectedDate!.toIso8601String().split('T').first
-            : '';
     
-    // Extract PDF name from URL if exists
-    if (widget.trip['program_url'] != null) {
-      String url = widget.trip['program_url'];
-      _currentPdfName = url.split('/').last.split('?').first; // Remove query parameters
+    if (widget.trip['date'] != null) {
+      _date = DateTime.parse(widget.trip['date']);
+      _dateController.text = DateFormat('yyyy-MM-dd').format(_date!);
+    }
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _descController.dispose();
+    _priceController.dispose();
+    _seatsController.dispose();
+    _dateController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _date ?? DateTime.now(),
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2100),
+    );
+
+    if (picked != null) {
+      setState(() {
+        _date = picked;
+        _dateController.text = DateFormat('yyyy-MM-dd').format(picked);
+      });
     }
   }
 
@@ -65,6 +83,7 @@ class _EditTripPageState extends State<EditTripPage> {
     if (picked != null) {
       setState(() {
         _image = File(picked.path);
+        _imageChanged = true;
       });
     }
   }
@@ -76,10 +95,11 @@ class _EditTripPageState extends State<EditTripPage> {
         allowedExtensions: ['pdf'],
         allowMultiple: false,
       );
-
+      
       if (result != null && result.files.single.path != null) {
         setState(() {
           _programFile = File(result.files.single.path!);
+          _programChanged = true;
         });
       }
     } catch (e) {
@@ -89,45 +109,22 @@ class _EditTripPageState extends State<EditTripPage> {
     }
   }
 
-  Future<void> _pickDate() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _selectedDate ?? DateTime.now(),
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
-    );
-    if (picked != null) {
-      setState(() {
-        _selectedDate = picked;
-        _dateController.text =
-            "${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}";
-      });
-    }
-  }
-
   Future<String?> _uploadImage() async {
-    if (_image == null) return widget.trip['image_url'];
+    if (_image == null) return null;
 
     try {
-      final user = Supabase.instance.client.auth.currentUser;
-      if (user == null) throw Exception('User not authenticated');
-
       final fileExtension = path.extension(_image!.path);
-      final fileName =
-          'trip_${DateTime.now().millisecondsSinceEpoch}$fileExtension';
-      final userFolder = user.id;
+      final fileName = 'trip_${DateTime.now().millisecondsSinceEpoch}$fileExtension';
 
-      await Supabase.instance.client.storage
+      await _supabase.storage
           .from(_bucketName)
           .upload(
-            '$userFolder/$fileName',
+            fileName,
             _image!,
             fileOptions: FileOptions(cacheControl: '3600', upsert: false),
           );
 
-      return Supabase.instance.client.storage
-          .from(_bucketName)
-          .getPublicUrl('$userFolder/$fileName');
+      return _supabase.storage.from(_bucketName).getPublicUrl(fileName);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Image upload failed: ${e.toString()}')),
@@ -137,30 +134,20 @@ class _EditTripPageState extends State<EditTripPage> {
   }
 
   Future<String?> _uploadPDF() async {
-    if (_programFile == null) return widget.trip['program_url'];
+    if (_programFile == null) return null;
 
     try {
-      final user = Supabase.instance.client.auth.currentUser;
-      if (user == null) throw Exception('User not authenticated');
-
       final fileName = 'program_${DateTime.now().millisecondsSinceEpoch}.pdf';
-      final userFolder = user.id;
 
-      await Supabase.instance.client.storage
+      await _supabase.storage
           .from(_programBucketName)
           .upload(
-            '$userFolder/$fileName',
+            fileName,
             _programFile!,
-            fileOptions: FileOptions(
-              cacheControl: '3600',
-              upsert: false,
-              contentType: 'application/pdf',
-            ),
+            fileOptions: FileOptions(cacheControl: '3600', upsert: false),
           );
 
-      return Supabase.instance.client.storage
-          .from(_programBucketName)
-          .getPublicUrl('$userFolder/$fileName');
+      return _supabase.storage.from(_programBucketName).getPublicUrl(fileName);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('PDF upload failed: ${e.toString()}')),
@@ -169,7 +156,7 @@ class _EditTripPageState extends State<EditTripPage> {
     }
   }
 
-  Future<void> _updateTrip() async {
+  Future<void> _submitChanges() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() {
@@ -177,260 +164,253 @@ class _EditTripPageState extends State<EditTripPage> {
     });
 
     try {
-      String? imageUrl = await _uploadImage();
-      String? programUrl = await _uploadPDF();
+      String? imageUrl;
+      if (_imageChanged && _image != null) {
+        imageUrl = await _uploadImage();
+      } else {
+        imageUrl = widget.trip['image_url'];
+      }
 
-      await Supabase.instance.client
+      String? programUrl;
+      if (_programChanged && _programFile != null) {
+        programUrl = await _uploadPDF();
+      } else {
+        programUrl = widget.trip['program_url'];
+      }
+
+      final updateData = {
+        'title': _titleController.text,
+        'description': _descController.text,
+        'type': _type,
+        'date': _date?.toIso8601String(),
+        'price_per_person': double.parse(_priceController.text),
+        'nbr_places': int.parse(_seatsController.text),
+        'free_places': int.parse(_seatsController.text) - 
+                      (widget.trip['nbr_places'] - (widget.trip['free_places'] ?? 0)),
+        'status': 'en_cours', // Reset status to pending when resubmitting
+        if (imageUrl != null) 'image_url': imageUrl,
+        if (programUrl != null) 'program_url': programUrl,
+      };
+
+      await _supabase
           .from('Voyage')
-          .update({
-            'image_url': imageUrl,
-            'title': _titleController.text,
-            'description': _descriptionController.text,
-            'type': _type,
-            'date': _selectedDate?.toIso8601String(),
-            'price_per_person': double.tryParse(_priceController.text),
-            'nbr_places': int.tryParse(_seatsController.text),
-            'program_url': programUrl,
-          })
+          .update(updateData)
           .eq('id', widget.trip['id']);
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Trip updated successfully')),
+        const SnackBar(content: Text("Trip updated and resubmitted for approval!")),
       );
-      Navigator.pop(context, true);
-    } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error updating trip: $e')));
-    } finally {
-      setState(() {
-        _isUploading = false;
-      });
-    }
-  }
 
-  ImageProvider? _getImageProvider() {
-    if (_image != null) {
-      return FileImage(_image!);
-    } else if (widget.trip['image_url'] != null) {
-      return NetworkImage(widget.trip['image_url']);
+      if (mounted) {
+        Navigator.pop(context, true);
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Update failed: ${e.toString()}')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isUploading = false;
+        });
+      }
     }
-    return null;
   }
 
   @override
   Widget build(BuildContext context) {
+    final isRejected = widget.trip['status']?.toLowerCase() == 'rejected';
     final border = OutlineInputBorder(
       borderRadius: BorderRadius.circular(35),
       borderSide: const BorderSide(width: 2.0, color: Colors.black),
     );
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Edit Trip')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+      appBar: AppBar(
+        title: const Text("Edit Trip"),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
         child: Form(
           key: _formKey,
-          child: Column(
-            children: [
-              Center(
-                child: GestureDetector(
-                  onTap: _pickImage,
-                  child: Container(
-                    height: 180,
-                    width: 180,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (isRejected)
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    margin: const EdgeInsets.only(bottom: 16),
                     decoration: BoxDecoration(
-                      border: Border.all(color: Colors.black45, width: 2.0),
-                      borderRadius: BorderRadius.circular(20),
-                      image:
-                          _getImageProvider() != null
-                              ? DecorationImage(
-                                image: _getImageProvider()!,
+                      color: Colors.red[50],
+                      border: Border.all(color: Colors.red),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Text(
+                      "This trip was rejected by admin. Please make necessary changes and resubmit.",
+                      style: TextStyle(color: Colors.red),
+                    ),
+                  ),
+
+                Center(
+                  child: GestureDetector(
+                    onTap: _pickImage,
+                    child: Container(
+                      height: 180,
+                      width: 180,
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.black45, width: 2.0),
+                        borderRadius: BorderRadius.circular(20),
+                        image: _image != null
+                            ? DecorationImage(
+                                image: FileImage(_image!),
                                 fit: BoxFit.cover,
                               )
-                              : null,
+                            : widget.trip['image_url'] != null
+                                ? DecorationImage(
+                                    image: NetworkImage(widget.trip['image_url']),
+                                    fit: BoxFit.cover,
+                                  )
+                                : null,
+                      ),
+                      child: _image == null && widget.trip['image_url'] == null
+                          ? const Icon(Icons.camera_alt_outlined, size: 40)
+                          : null,
                     ),
-                    child:
-                        _getImageProvider() == null
-                            ? const Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.camera_alt_outlined, size: 40),
-                                SizedBox(height: 8),
-                                Text('Tap to select image'),
-                              ],
-                            )
-                            : null,
                   ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _titleController,
-                decoration: InputDecoration(
-                  labelText: 'Title',
-                  border: border,
-                  enabledBorder: border,
+                const SizedBox(height: 20),
+                
+                TextFormField(
+                  controller: _titleController,
+                  decoration: InputDecoration(
+                    labelText: "Title",
+                    border: border,
+                    enabledBorder: border,
+                  ),
+                  validator: (value) =>
+                      value == null || value.isEmpty ? 'Required' : null,
                 ),
-                validator:
-                    (value) =>
-                        value == null || value.isEmpty ? 'Required' : null,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _descriptionController,
-                maxLines: 3,
-                decoration: InputDecoration(
-                  labelText: 'Description',
-                  border: border,
-                  enabledBorder: border,
+                const SizedBox(height: 12),
+                
+                TextFormField(
+                  controller: _descController,
+                  decoration: InputDecoration(
+                    labelText: "Description",
+                    border: border,
+                    enabledBorder: border,
+                  ),
+                  validator: (value) =>
+                      value == null || value.isEmpty ? 'Required' : null,
                 ),
-                validator:
-                    (value) =>
-                        value == null || value.isEmpty ? 'Required' : null,
-              ),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                value: _type,
-                decoration: InputDecoration(
-                  labelText: 'Type',
-                  border: border,
-                  enabledBorder: border,
+                const SizedBox(height: 12),
+                
+                DropdownButtonFormField<String>(
+                  decoration: InputDecoration(
+                    labelText: "Type",
+                    border: border,
+                    enabledBorder: border,
+                  ),
+                  value: _type,
+                  onChanged: (value) => setState(() => _type = value),
+                  items: ['City', 'Event', 'Sport']
+                      .map((type) => DropdownMenuItem(
+                            value: type,
+                            child: Text(type),
+                          ))
+                      .toList(),
+                  validator: (value) =>
+                      value == null ? 'Please select a type' : null,
                 ),
-                items:
-                    _types
-                        .map(
-                          (type) =>
-                              DropdownMenuItem(value: type, child: Text(type)),
-                        )
-                        .toList(),
-                onChanged: (value) => setState(() => _type = value),
-                validator:
-                    (value) => value == null ? 'Please select a type' : null,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _dateController,
-                readOnly: true,
-                decoration: InputDecoration(
-                  labelText: 'Date',
-                  border: border,
-                  enabledBorder: border,
+                const SizedBox(height: 12),
+                
+                TextFormField(
+                  controller: _dateController,
+                  readOnly: true,
+                  decoration: InputDecoration(
+                    labelText: "Date",
+                    border: border,
+                    enabledBorder: border,
+                  ),
+                  onTap: _pickDate,
+                  validator: (value) =>
+                      value == null || value.isEmpty ? 'Required' : null,
                 ),
-                onTap: _pickDate,
-                validator:
-                    (value) =>
-                        value == null || value.isEmpty ? 'Required' : null,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _priceController,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  labelText: 'Price per Person',
-                  border: border,
-                  enabledBorder: border,
-                ),
-                validator:
-                    (value) =>
-                        value == null || value.isEmpty ? 'Required' : null,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _seatsController,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  labelText: 'Seats',
-                  border: border,
-                  enabledBorder: border,
-                ),
-                validator:
-                    (value) =>
-                        value == null || value.isEmpty ? 'Required' : null,
-              ),
-              const SizedBox(height: 16),
-
-              // PDF Section - Simplified
-              Container(
-                margin: const EdgeInsets.only(bottom: 16),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey.shade300),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                const SizedBox(height: 12),
+                
+                Row(
                   children: [
-                    const Text(
-                      'Program PDF',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
+                    Expanded(
+                      child: TextFormField(
+                        controller: _priceController,
+                        decoration: InputDecoration(
+                          labelText: "Price",
+                          border: border,
+                          enabledBorder: border,
+                        ),
+                        keyboardType: TextInputType.number,
+                        validator: (value) =>
+                            value == null || value.isEmpty ? 'Required' : null,
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        const Icon(Icons.picture_as_pdf, color: Colors.red),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            _programFile != null
-                                ? _programFile!.path.split('/').last
-                                : _currentPdfName != null
-                                    ? _currentPdfName!
-                                    : 'No PDF selected',
-                            style: const TextStyle(fontSize: 14),
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _seatsController,
+                        decoration: InputDecoration(
+                          labelText: "Seats",
+                          border: border,
+                          enabledBorder: border,
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: _pickPDF,
-                        icon: const Icon(Icons.upload_file),
-                        label: Text(_programFile != null || _currentPdfName != null
-                            ? 'Change PDF'
-                            : 'Select PDF'),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
+                        keyboardType: TextInputType.number,
+                        validator: (value) =>
+                            value == null || value.isEmpty ? 'Required' : null,
                       ),
                     ),
                   ],
                 ),
-              ),
-
-              const SizedBox(height: 32),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _isUploading ? null : _updateTrip,
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(35),
-                    ),
-                    backgroundColor: Colors.black,
-                    foregroundColor: Colors.white,
+                const SizedBox(height: 16),
+                
+                ListTile(
+                  title: Text(
+                    _programFile != null
+                        ? path.basename(_programFile!.path)
+                        : widget.trip['program_url'] != null
+                            ? path.basename(widget.trip['program_url'])
+                            : 'Select PDF Program',
                   ),
-                  child:
-                      _isUploading
-                          ? const CircularProgressIndicator(
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              Colors.white,
-                            ),
-                          )
-                          : const Text('Save', style: TextStyle(fontSize: 16)),
+                  trailing: const Icon(Icons.attach_file),
+                  onTap: _pickPDF,
                 ),
-              ),
-            ],
+                
+                const SizedBox(height: 32),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _isUploading ? null : _submitChanges,
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(35),
+                      ),
+                      backgroundColor: Colors.black,
+                      foregroundColor: Colors.white,
+                    ),
+                    child: _isUploading
+                        ? const CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          )
+                        : const Text("Save Changes", style: TextStyle(fontSize: 16)),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
