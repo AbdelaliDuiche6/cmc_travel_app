@@ -1,359 +1,254 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:intl/intl.dart';
+import 'package:intl/intl.dart'; // For formatting date
 
-class OrgTripConfirmatino extends StatefulWidget {
-  const OrgTripConfirmatino({super.key});
+class OrgReservationsPage extends StatefulWidget {
+  const OrgReservationsPage({super.key});
 
   @override
-  State<OrgTripConfirmatino> createState() => _OrgTripConfirmatino();
+  State<OrgReservationsPage> createState() => _OrgReservationsPageState();
 }
 
-class _OrgTripConfirmatino extends State<OrgTripConfirmatino> {
+class _OrgReservationsPageState extends State<OrgReservationsPage> {
   final supabase = Supabase.instance.client;
-  
-  List<Map<String, dynamic>> pendingBookings = [];
+  List<Map<String, dynamic>> reservations = [];
   bool isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    fetchPendingBookings();
+    fetchReservations();
   }
 
-  Future<void> fetchPendingBookings() async {
-    try {
-      final user = supabase.auth.currentUser;
-      if (user == null) {
-        print("User not logged in");
-        return;
-      }
+  Future<void> fetchReservations() async {
+    final user = supabase.auth.currentUser;
+    if (user == null) return;
 
-      // Adjust this query based on your database schema
+    try {
       final response = await supabase
-          .from('bookings')
+          .from('Reservation')
           .select('''
             id,
-            stagiaire_id,
-            trip_id,
-            status,
-            created_at,
-            profiles!stagiaire_id (
-              full_name,
-              email,
+            payment_state,
+            organizer_id,
+            profiles:stagiaire_id (
+              name,
               image_url
             ),
-            Voyage!trip_id (
+            Voyage:voyage_id (
               title,
+              image_url,
+              description,
               date,
               price_per_person
             )
           ''')
-          .eq('organizer_id', user.id)
-          .eq('status', 'pending')
-          .order('created_at', ascending: false);
+          .eq('organizer_id', user.id);
 
       setState(() {
-        pendingBookings = (response as List<dynamic>)
-            .map((e) => e as Map<String, dynamic>)
-            .toList();
+        reservations = (response as List).cast<Map<String, dynamic>>();
         isLoading = false;
       });
-    } catch (error) {
-      print('Error fetching pending bookings: $error');
-      setState(() {
-        isLoading = false;
-      });
+    } catch (e) {
+      print("Error while loading reservations: $e");
+      setState(() => isLoading = false);
     }
   }
 
-  Future<void> confirmBooking(String bookingId) async {
+  Future<void> confirmCashPayment(String id) async {
     try {
       await supabase
-          .from('bookings')
-          .update({'status': 'confirmed'})
-          .eq('id', bookingId);
+          .from('Reservation')
+          .update({'payment_state': true})
+          .eq('id', id);
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Booking confirmed successfully")),
+        SnackBar(content: Text("✅ Cash payment confirmed")),
       );
-
-      // Refresh the list
-      fetchPendingBookings();
+      fetchReservations();
     } catch (e) {
-      print('Error confirming booking: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Failed to confirm booking: ${e.toString()}")),
+        SnackBar(content: Text("❌ Failed to confirm payment")),
       );
     }
   }
 
-  Future<void> rejectBooking(String bookingId) async {
-    try {
-      await supabase
-          .from('bookings')
-          .update({'status': 'rejected'})
-          .eq('id', bookingId);
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Booking rejected")),
-      );
-
-      // Refresh the list
-      fetchPendingBookings();
-    } catch (e) {
-      print('Error rejecting booking: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Failed to reject booking: ${e.toString()}")),
-      );
-    }
+  Color getPaymentColor(bool? state) {
+    if (state == true) return Colors.green;
+    if (state == false) return Colors.orange;
+    return Colors.grey;
   }
 
-  Widget _buildStagiaireAvatar(String? imageUrl) {
-    if (imageUrl != null && imageUrl.isNotEmpty) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(25),
-        child: Image.network(
-          imageUrl,
-          height: 50,
-          width: 50,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            return Container(
-              height: 50,
-              width: 50,
-              decoration: BoxDecoration(
-                color: Colors.grey[200],
-                borderRadius: BorderRadius.circular(25),
-              ),
-              child: Icon(Icons.person, color: Colors.grey),
-            );
-          },
-        ),
-      );
-    } else {
-      return Container(
-        height: 50,
-        width: 50,
-        decoration: BoxDecoration(
-          color: Colors.grey[200],
-          borderRadius: BorderRadius.circular(25),
-        ),
-        child: Icon(Icons.person, color: Colors.grey),
-      );
-    }
+  String getPaymentText(bool? state) {
+    if (state == true) return '💳 Paid via Stripe';
+    if (state == false) return '💵 Cash Payment';
+    return '⏳ Pending';
   }
+
+  Widget buildStatusChip(bool? state) {
+    final color = getPaymentColor(state);
+    final text = getPaymentText(state);
+
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(color: color, fontWeight: FontWeight.bold),
+      ),
+    );
+  }
+
+  String formatDate(String? dateString) {
+  if (dateString == null) return "No date";
+  try {
+    final date = DateTime.parse(dateString);
+    return DateFormat('dd MMM yyyy').format(date); // Only the date
+  } catch (e) {
+    return "Invalid date";
+  }
+}
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Booking Confirmations'),
+        title: Text("Trip Reservations"),
         backgroundColor: Colors.blue,
-        foregroundColor: Colors.white,
-        elevation: 0,
       ),
       body: isLoading
           ? Center(child: CircularProgressIndicator())
-          : pendingBookings.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.check_circle_outline,
-                        size: 80,
-                        color: Colors.grey,
-                      ),
-                      SizedBox(height: 16),
-                      Text(
-                        'No pending bookings',
-                        style: TextStyle(
-                          fontSize: 18,
-                          color: Colors.grey,
-                        ),
-                      ),
-                    ],
-                  ),
-                )
+          : reservations.isEmpty
+              ? Center(child: Text("No reservations found"))
               : ListView.builder(
                   padding: EdgeInsets.all(16),
-                  itemCount: pendingBookings.length,
+                  itemCount: reservations.length,
                   itemBuilder: (context, index) {
-                    final booking = pendingBookings[index];
-                    final stagiaire = booking['profiles'];
-                    final trip = booking['Voyage'];
-                    
+                    final res = reservations[index];
+                    final profile = res['profiles'];
+                    final trip = res['Voyage'];
+                    final paymentState = res['payment_state'] as bool?;
+                    final image = trip['image_url'];
+
                     return Card(
                       margin: EdgeInsets.only(bottom: 16),
-                      elevation: 3,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Padding(
-                        padding: EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Stagiaire Info
-                            Row(
+                      elevation: 3,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Trip Image
+                          ClipRRect(
+                            borderRadius: BorderRadius.vertical(
+                                top: Radius.circular(12)),
+                            child: Image.network(
+                              image ?? '',
+                              height: 150,
+                              width: double.infinity,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) =>
+                                  Container(
+                                height: 150,
+                                color: Colors.grey[300],
+                                child: Icon(Icons.image, size: 40),
+                              ),
+                            ),
+                          ),
+
+                          // Trip Info
+                          Padding(
+                            padding: EdgeInsets.all(16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                _buildStagiaireAvatar(stagiaire?['image_url']),
-                                SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        stagiaire?['full_name'] ?? 'Unknown User',
+                                // User info
+                                Row(
+                                  children: [
+                                    CircleAvatar(
+                                      backgroundImage: profile?['image_url'] !=
+                                              null
+                                          ? NetworkImage(profile['image_url'])
+                                          : null,
+                                      child: profile?['image_url'] == null
+                                          ? Icon(Icons.person)
+                                          : null,
+                                    ),
+                                    SizedBox(width: 10),
+                                    Expanded(
+                                      child: Text(
+                                        profile?['name'] ?? 'Unknown',
                                         style: TextStyle(
                                           fontSize: 16,
                                           fontWeight: FontWeight.bold,
                                         ),
                                       ),
-                                      Text(
-                                        stagiaire?['email'] ?? '',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          color: Colors.grey[600],
-                                        ),
-                                      ),
-                                    ],
+                                    ),
+                                  ],
+                                ),
+                                SizedBox(height: 12),
+
+                                // Trip title
+                                Text(
+                                  trip['title'] ?? 'No title',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
-                              ],
-                            ),
-                            SizedBox(height: 12),
-                            Divider(),
-                            SizedBox(height: 8),
-                            
-                            // Trip Info
-                            Text(
-                              'Trip: ${trip?['title'] ?? 'Unknown Trip'}',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            SizedBox(height: 4),
-                            Row(
-                              children: [
-                                Icon(Icons.calendar_today, size: 16, color: Colors.grey),
-                                SizedBox(width: 4),
-                                Text(
-                                  trip?['date'] != null
-                                      ? DateFormat('MMM dd, yyyy').format(
-                                          DateTime.parse(trip['date']),
-                                        )
-                                      : 'Date not available',
-                                  style: TextStyle(color: Colors.grey[600]),
-                                ),
-                              ],
-                            ),
-                            SizedBox(height: 4),
-                            Row(
-                              children: [
-                                Icon(Icons.attach_money, size: 16, color: Colors.grey),
-                                SizedBox(width: 4),
-                                Text(
-                                  '\$${trip?['price_per_person']?.toString() ?? '0.00'}',
-                                  style: TextStyle(color: Colors.grey[600]),
-                                ),
-                              ],
-                            ),
-                            SizedBox(height: 4),
-                            Row(
-                              children: [
-                                Icon(Icons.access_time, size: 16, color: Colors.grey),
-                                SizedBox(width: 4),
-                                Text(
-                                  'Requested: ${DateFormat('MMM dd, yyyy - HH:mm').format(
-                                    DateTime.parse(booking['created_at']),
-                                  )}',
-                                  style: TextStyle(color: Colors.grey[600]),
-                                ),
-                              ],
-                            ),
-                            SizedBox(height: 16),
-                            
-                            // Action Buttons
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: [
-                                TextButton.icon(
-                                  onPressed: () {
-                                    showDialog(
-                                      context: context,
-                                      builder: (context) => AlertDialog(
-                                        title: Text("Reject Booking"),
-                                        content: Text(
-                                          "Are you sure you want to reject this booking request?",
-                                        ),
-                                        actions: [
-                                          TextButton(
-                                            child: Text("Cancel"),
-                                            onPressed: () => Navigator.pop(context),
-                                          ),
-                                          TextButton(
-                                            child: Text(
-                                              "Reject",
-                                              style: TextStyle(color: Colors.red),
-                                            ),
-                                            onPressed: () {
-                                              Navigator.pop(context);
-                                              rejectBooking(booking['id']);
-                                            },
-                                          ),
-                                        ],
-                                      ),
-                                    );
-                                  },
-                                  icon: Icon(Icons.close, color: Colors.red),
-                                  label: Text(
-                                    "Reject",
-                                    style: TextStyle(color: Colors.red),
+                                SizedBox(height: 6),
+
+                                // Trip description
+                                if (trip['description'] != null)
+                                  Text(
+                                    trip['description'],
+                                    style: TextStyle(fontSize: 14),
                                   ),
-                                ),
-                                SizedBox(width: 8),
-                                ElevatedButton.icon(
-                                  onPressed: () {
-                                    showDialog(
-                                      context: context,
-                                      builder: (context) => AlertDialog(
-                                        title: Text("Confirm Booking"),
-                                        content: Text(
-                                          "Are you sure you want to confirm this booking request?",
-                                        ),
-                                        actions: [
-                                          TextButton(
-                                            child: Text("Cancel"),
-                                            onPressed: () => Navigator.pop(context),
-                                          ),
-                                          TextButton(
-                                            child: Text(
-                                              "Confirm",
-                                              style: TextStyle(color: Colors.green),
-                                            ),
-                                            onPressed: () {
-                                              Navigator.pop(context);
-                                              confirmBooking(booking['id']);
-                                            },
-                                          ),
-                                        ],
-                                      ),
-                                    );
-                                  },
-                                  icon: Icon(Icons.check, color: Colors.white),
-                                  label: Text("Confirm"),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.green,
-                                    foregroundColor: Colors.white,
+                                SizedBox(height: 6),
+
+                                // Trip date
+                                if (trip['date'] != null)
+                                  Text(
+                                    "📅 ${formatDate(trip['date'])}",
+                                    style: TextStyle(fontSize: 14),
                                   ),
-                                ),
+                                SizedBox(height: 6),
+
+                                // Trip price
+                                if (trip['price_per_person'] != null)
+                                  Text(
+                                    "💰 ${trip['price_per_person']} MAD",
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                SizedBox(height: 10),
+
+                                // Payment status
+                                buildStatusChip(paymentState),
+                                SizedBox(height: 10),
+
+                                // Confirm Cash button
+                                if (paymentState == false)
+                                  ElevatedButton.icon(
+                                    onPressed: () =>
+                                        confirmCashPayment(res['id']),
+                                    icon: Icon(Icons.check),
+                                    label: Text("Confirm Payment"),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.blue,
+                                    ),
+                                  ),
                               ],
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     );
                   },
