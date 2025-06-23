@@ -8,6 +8,8 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
+
+
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -57,9 +59,11 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     
     final email = _emailController.text;
     final password = _passwordController.text;
+    
 
     try {
       final response = await authService.signInWithEmailPassword(email, password);
+      
 
       if (response.session != null && mounted) {
         // Rebuild the widget tree and let AuthGate handle navigation
@@ -177,7 +181,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                     style: TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
-                      color: Color.fromARGB(255, 26, 142, 234),
+                      color: Colors.black,
                     ),
                   ).animate().fadeIn(duration: 600.ms).slideX(),
                   const SizedBox(height: 8),
@@ -204,7 +208,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                         //   ),
                         // ),
                         const SizedBox(height: 8),
-                        _buildTextField("Nom", Icons.email_outlined, _emailController),
+                        _buildTextField("Email", Icons.email_outlined, _emailController),
                       ],
                     ),
                   ),
@@ -239,10 +243,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                       children: [
                         GestureDetector(
                           onTap: () {
-                            // Fonctionnalité de mot de passe oublié
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text("Fonctionnalité à venir"))
-                            );
+                            
                           },
                           child: const Text(
                             "Mot de passe oublié ?",
