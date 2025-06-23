@@ -98,8 +98,8 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                     },
                     child: SvgPicture.asset(
                       'assets/images/logo.svg',
-                      width: 250,
-                      height: 250,
+                      width: 400,
+                      height: 400,
                       semanticsLabel: 'CMC TRAVEL',
                     ).animate(controller: _animationController)
                       .fade(duration: const Duration(milliseconds: 500))
