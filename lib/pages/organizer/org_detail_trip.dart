@@ -14,6 +14,7 @@ class TripDetailsPage extends StatefulWidget {
 class _TripDetailsPageState extends State<TripDetailsPage> {
   final supabase = Supabase.instance.client;
   String organizerName = '';
+  String organizerImageUrl = '';
   bool isLoadingOrganizer = true;
 
   @override
@@ -26,12 +27,22 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
     try {
       final response = await supabase
           .from('profiles')
-          .select('name')
+          .select('name, image_url')
           .eq('id', widget.trip['organizer_id'])
           .single();
 
+      String finalProfilePicUrl = '';
+      final picturePath = response['image_url'];
+
+      if (picturePath != null && picturePath.isNotEmpty) {
+        finalProfilePicUrl = supabase.storage
+            .from('profile-images')
+            .getPublicUrl(picturePath);
+      }
+
       setState(() {
         organizerName = response['name'] ?? 'Unknown Organizer';
+        organizerImageUrl = finalProfilePicUrl;
         isLoadingOrganizer = false;
       });
     } catch (e) {
@@ -43,12 +54,52 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
     }
   }
 
+  Widget _buildOrganizerAvatar() {
+    const double size = 60;
+
+    if (organizerImageUrl.isNotEmpty) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Image.network(
+          organizerImageUrl,
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) => Container(
+            width: size,
+            height: size,
+            color: Colors.grey[200],
+            child: Icon(Icons.person, size: 30, color: Colors.grey),
+          ),
+          loadingBuilder: (context, child, progress) {
+            if (progress == null) return child;
+            return Container(
+              width: size,
+              height: size,
+              alignment: Alignment.center,
+              child: CircularProgressIndicator(),
+            );
+          },
+        ),
+      );
+    } else {
+      return Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: Colors.grey[200],
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Icon(Icons.person, size: 30, color: Colors.grey),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: CustomScrollView(
         slivers: [
-          // App Bar with Image
           SliverAppBar(
             expandedHeight: 300,
             pinned: true,
@@ -113,7 +164,6 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
                   ),
                   SizedBox(height: 20),
 
-                  // Trip Information Cards
                   _buildInfoCard(
                     icon: Icons.calendar_today,
                     title: 'Date',
@@ -135,17 +185,64 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
                   _buildInfoCard(
                     icon: Icons.people,
                     title: 'Available Seats',
-                    content: '${widget.trip['free_places'] ?? 0} out of ${widget.trip['nbr_places'] ?? 0} seats available',
+                    content:
+                        '${widget.trip['free_places'] ?? 0} out of ${widget.trip['nbr_places'] ?? 0} seats available',
                   ),
 
-                  _buildInfoCard(
-                    icon: Icons.person,
-                    title: 'Organizer',
-                    content: isLoadingOrganizer ? 'Loading...' : organizerName,
+                  // Organizer info with square image
+                  Container(
+                    width: double.infinity,
+                    margin: EdgeInsets.symmetric(vertical: 8),
+                    padding: EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(15),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.grey.withOpacity(0.1),
+                          spreadRadius: 1,
+                          blurRadius: 5,
+                          offset: Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        _buildOrganizerAvatar(),
+                        SizedBox(width: 15),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Organizer',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey[600],
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              SizedBox(height: 5),
+                              Text(
+                                isLoadingOrganizer
+                                    ? 'Loading...'
+                                    : organizerName,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.black87,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
 
-                  // Description Section
-                  if (widget.trip['description'] != null && widget.trip['description'].toString().isNotEmpty)
+                  // Description
+                  if (widget.trip['description'] != null &&
+                      widget.trip['description'].toString().isNotEmpty)
                     Container(
                       width: double.infinity,
                       margin: EdgeInsets.symmetric(vertical: 10),
@@ -160,7 +257,8 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
                         children: [
                           Row(
                             children: [
-                              Icon(Icons.description, color: Colors.blue, size: 24),
+                              Icon(Icons.description,
+                                  color: Colors.blue, size: 24),
                               SizedBox(width: 10),
                               Text(
                                 'Description',
@@ -187,14 +285,14 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
 
                   SizedBox(height: 30),
 
-                  // Book Now Button (if you want to add booking functionality)
-                  if (widget.trip['free_places'] != null && widget.trip['free_places'] > 0)
-                    Container(
+                  // Book Now Button
+                  if (widget.trip['free_places'] != null &&
+                      widget.trip['free_places'] > 0)
+                    SizedBox(
                       width: double.infinity,
                       height: 50,
                       child: ElevatedButton(
                         onPressed: () {
-                          // Add booking functionality here
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text('Booking functionality to be implemented'),
@@ -218,8 +316,9 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
                       ),
                     ),
 
-                  if (widget.trip['free_places'] == null || widget.trip['free_places'] <= 0)
-                    Container(
+                  if (widget.trip['free_places'] == null ||
+                      widget.trip['free_places'] <= 0)
+                    SizedBox(
                       width: double.infinity,
                       height: 50,
                       child: ElevatedButton(
