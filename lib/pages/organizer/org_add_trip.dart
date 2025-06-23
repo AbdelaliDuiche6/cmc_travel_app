@@ -202,17 +202,19 @@ class _AddTripPageState extends State<AddTripPage> {
       }
 
       await _supabase.from('Voyage').insert({
-        'title': _titleController.text,
-        'description': _descController.text,
-        'type': _type!,
-        'date': _date!.toIso8601String(),
-        'price_per_person': double.parse(_priceController.text),
-        'nbr_places': int.parse(_seatsController.text),
-        'status': 'en_cours',
-        'image_url': imageUrl,
-        'program_url': programUrl,
-        'organizer_id': userId,
-      });
+  'title': _titleController.text,
+  'description': _descController.text,
+  'type': _type!,
+  'date': _date!.toIso8601String(),
+  'price_per_person': double.parse(_priceController.text),
+  'nbr_places': int.parse(_seatsController.text),  // Set total seats
+  'free_places': int.parse(_seatsController.text), // Set free seats to the same value initially
+  'status': 'en_cours',
+  'image_url': imageUrl,
+  'program_url': programUrl,
+  'organizer_id': userId,
+});
+
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Trip published successfully!")),
