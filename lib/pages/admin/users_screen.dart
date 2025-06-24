@@ -905,19 +905,19 @@ BottomNavigationBar buildBottomNavigationBar() {
     currentIndex: _selectedIndex,
     items: [
       BottomNavigationBarItem(
-        icon: SvgPicture.asset('images/home.svg'),
+        icon: SvgPicture.asset('assets/images/home.svg'),
         label: 'Home',
       ),
       BottomNavigationBarItem(
-        icon: SvgPicture.asset('images/notification.svg'),  // Changed icon
+        icon: SvgPicture.asset('assets/images/notification.svg'),  // Changed icon
         label: 'Notifications',
       ),
       BottomNavigationBarItem(
-        icon: SvgPicture.asset('images/statistics.svg', width: 35, height: 35,),
+        icon: SvgPicture.asset('assets/images/statistics.svg', width: 35, height: 35,),
         label: 'Statestique',
       ),
       BottomNavigationBarItem(
-        icon: SvgPicture.asset('images/profile.svg'),
+        icon: SvgPicture.asset('assets/images/profile.svg'),
         label: 'Profile',
       ),
     ],
