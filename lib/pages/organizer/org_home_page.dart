@@ -624,8 +624,8 @@ class _OrgHomePageState extends State<OrgHomePage> {
                 background: Stack(
                   children: [
                     Image.asset(
-                      "assets/images/image.png",
-                      width: MediaQuery.of(context).size.width,
+                      "assets/images/maxresdefault.jpg",
+                      width:400,
                       height: MediaQuery.of(context).size.height / 2.5,
                       fit: BoxFit.cover,
                     ),
