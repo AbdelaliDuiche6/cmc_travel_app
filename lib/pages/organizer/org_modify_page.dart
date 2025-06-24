@@ -1,3 +1,5 @@
+import 'package:animate_do/animate_do.dart';
+import 'package:cmc_travel_app/components/my_button.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -11,7 +13,9 @@ class OrgModifyPage extends StatefulWidget {
   _OrgModifyPageState createState() => _OrgModifyPageState();
 }
 
-class _OrgModifyPageState extends State<OrgModifyPage> {
+class _OrgModifyPageState extends State<OrgModifyPage> with TickerProviderStateMixin {
+   final Color primaryColor = const Color.fromARGB(255, 26, 142, 234);
+  final Color secondaryColor = const Color.fromARGB(255, 0, 0, 0);
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _currentPasswordController = TextEditingController();
@@ -22,16 +26,101 @@ class _OrgModifyPageState extends State<OrgModifyPage> {
   final String _bucketName = 'profile-images';
 
   File? _image;
-  String _currentProfilePictureUrl = ''; // Add this to store current profile picture URL
+  String _currentProfilePictureUrl = '';
   bool _obscureCurrentPassword = true;
   bool _obscureNewPassword = true;
   bool _obscureConfirmPassword = true;
   bool _isLoading = false;
 
+  // Animation controllers
+  late AnimationController _fadeController;
+  late AnimationController _slideController;
+  late AnimationController _avatarController;
+  late AnimationController _buttonController;
+  
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
+  late Animation<double> _avatarScaleAnimation;
+  late Animation<double> _buttonScaleAnimation;
+
   @override
   void initState() {
     super.initState();
-    _loadCurrentProfile(); // Load both phone and profile picture
+    
+    // Initialize animation controllers
+    _fadeController = AnimationController(
+      duration: Duration(milliseconds: 800),
+      vsync: this,
+    );
+    
+    _slideController = AnimationController(
+      duration: Duration(milliseconds: 600),
+      vsync: this,
+    );
+    
+    _avatarController = AnimationController(
+      duration: Duration(milliseconds: 300),
+      vsync: this,
+    );
+    
+    _buttonController = AnimationController(
+      duration: Duration(milliseconds: 150),
+      vsync: this,
+    );
+
+    // Initialize animations
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _fadeController,
+      curve: Curves.easeInOut,
+    ));
+
+    _slideAnimation = Tween<Offset>(
+      begin: Offset(0, 0.3),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _slideController,
+      curve: Curves.easeOutBack,
+    ));
+
+    _avatarScaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 1.1,
+    ).animate(CurvedAnimation(
+      parent: _avatarController,
+      curve: Curves.elasticOut,
+    ));
+
+    _buttonScaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 0.95,
+    ).animate(CurvedAnimation(
+      parent: _buttonController,
+      curve: Curves.easeInOut,
+    ));
+
+    // Start animations
+    _fadeController.forward();
+    Future.delayed(Duration(milliseconds: 200), () {
+      _slideController.forward();
+    });
+    
+    _loadCurrentProfile();
+  }
+
+  @override
+  void dispose() {
+    _fadeController.dispose();
+    _slideController.dispose();
+    _avatarController.dispose();
+    _buttonController.dispose();
+    _phoneController.dispose();
+    _currentPasswordController.dispose();
+    _newPasswordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadCurrentProfile() async {
@@ -48,10 +137,8 @@ class _OrgModifyPageState extends State<OrgModifyPage> {
       setState(() {
         _phoneController.text = response['phone_number'] ?? '';
         
-        // Load current profile picture URL
         final picturePath = response['image_url'];
         if (picturePath != null && picturePath.isNotEmpty) {
-          // Clean the path - remove leading slash if present
           String cleanPath = picturePath.startsWith('/') ? picturePath.substring(1) : picturePath;
           
           _currentProfilePictureUrl = _supabase.storage
@@ -82,17 +169,32 @@ class _OrgModifyPageState extends State<OrgModifyPage> {
             ),
           );
 
-      // Return just the file name/path, not the full URL
       return fileName;
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Image upload failed: ${e.toString()}')),
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.error, color: Colors.white),
+              SizedBox(width: 8),
+              Expanded(child: Text('Image upload failed: ${e.toString()}')),
+            ],
+          ),
+          backgroundColor: Colors.red[600],
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
       );
       return null;
     }
   }
 
   Future<void> _pickImage() async {
+    // Animate avatar
+    _avatarController.forward().then((_) {
+      _avatarController.reverse();
+    });
+
     final picker = ImagePicker();
     final picked = await picker.pickImage(source: ImageSource.gallery);
     if (picked != null) {
@@ -105,33 +207,32 @@ class _OrgModifyPageState extends State<OrgModifyPage> {
   Future<void> _saveChanges() async {
     if (!_formKey.currentState!.validate()) return;
 
+    // Animate button press
+    _buttonController.forward().then((_) {
+      _buttonController.reverse();
+    });
+
     setState(() {
       _isLoading = true;
     });
 
     final user = _supabase.auth.currentUser;
     if (user == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("User not logged in")),
-      );
+      _showSnackBar("User not logged in", false);
       return;
     }
 
     try {
       final userId = user.id;
-
-      // Upload image and get the file path (not full URL)
       String? imagePath = await _uploadImage();
 
-      // Update profile
       final updateData = {
         'phone_number': _phoneController.text,
-        if (imagePath != null) 'image_url': imagePath, // Store the path, not full URL
+        if (imagePath != null) 'image_url': imagePath,
       };
 
       await _supabase.from('profiles').update(updateData).eq('id', userId);
 
-      // Update password if provided
       if (_newPasswordController.text.isNotEmpty && _currentPasswordController.text.isNotEmpty) {
         final res = await _supabase.auth.signInWithPassword(
           email: user.email!,
@@ -147,14 +248,10 @@ class _OrgModifyPageState extends State<OrgModifyPage> {
         );
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Profile updated successfully.")),
-      );
-      Navigator.pop(context, true); // Return true to indicate successful update
+      _showSnackBar("Profile updated successfully!", true);
+      Navigator.pop(context, true);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error: ${e.toString()}")),
-      );
+      _showSnackBar("Error: ${e.toString()}", false);
     } finally {
       setState(() {
         _isLoading = false;
@@ -162,217 +259,412 @@ class _OrgModifyPageState extends State<OrgModifyPage> {
     }
   }
 
+  void _showSnackBar(String message, bool isSuccess) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(
+              isSuccess ? Icons.check_circle : Icons.error,
+              color: Colors.white,
+            ),
+            SizedBox(width: 8),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: isSuccess ? Colors.green[600] : Colors.red[600],
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        margin: EdgeInsets.all(16),
+      ),
+    );
+  }
+
   Widget _buildProfileAvatar() {
-    // Priority: New selected image > Current profile picture > Default icon
+    return AnimatedBuilder(
+      animation: _avatarScaleAnimation,
+      builder: (context, child) {
+        return Transform.scale(
+          scale: _avatarScaleAnimation.value,
+          child: Container(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: primaryColor.withOpacity(0.3),
+                  spreadRadius: 5,
+                  blurRadius: 15,
+                  offset: Offset(0, 5),
+                ),
+              ],
+            ),
+            child: _buildAvatarContent(),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildAvatarContent() {
+    Widget avatarChild;
+    
     if (_image != null) {
-      return CircleAvatar(
+      avatarChild = CircleAvatar(
         radius: 60,
         backgroundColor: Colors.grey[200],
         backgroundImage: FileImage(_image!),
-        child: Stack(
-          children: [
-            Positioned(
-              bottom: 0,
-              right: 0,
-              child: Container(
-                padding: EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: Colors.amber,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(Icons.edit, size: 16, color: Colors.white),
-              ),
-            ),
-          ],
-        ),
       );
     } else if (_currentProfilePictureUrl.isNotEmpty) {
-      return CircleAvatar(
+      avatarChild = CircleAvatar(
         radius: 60,
         backgroundColor: Colors.grey[200],
         backgroundImage: NetworkImage(_currentProfilePictureUrl),
-        child: Stack(
-          children: [
-            Positioned(
-              bottom: 0,
-              right: 0,
-              child: Container(
-                padding: EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: Colors.amber,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(Icons.edit, size: 16, color: Colors.white),
-              ),
-            ),
-          ],
-        ),
       );
     } else {
-      return CircleAvatar(
+      avatarChild = CircleAvatar(
         radius: 60,
         backgroundColor: Colors.grey[200],
-        child: Stack(
-          children: [
-            Icon(Icons.person, size: 60, color: Colors.grey),
-            Positioned(
-              bottom: 0,
-              right: 0,
-              child: Container(
-                padding: EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: Colors.amber,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(Icons.edit, size: 16, color: Colors.white),
-              ),
-            ),
-          ],
-        ),
+        child: Icon(Icons.person, size: 60, color: Colors.grey),
       );
     }
+
+    return Stack(
+      children: [
+        avatarChild,
+        Positioned(
+          bottom: 5,
+          right: 5,
+          child: AnimatedContainer(
+            duration: Duration(milliseconds: 200),
+            padding: EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [primaryColor, const Color.fromARGB(255, 65, 222, 246)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: primaryColor.withOpacity(0.4),
+                  spreadRadius: 2,
+                  blurRadius: 8,
+                  offset: Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Icon(Icons.camera_alt, size: 16, color: Colors.white),
+          ),
+        ),
+      ],
+    );
   }
 
-  @override
-  void dispose() {
-    _phoneController.dispose();
-    _currentPasswordController.dispose();
-    _newPasswordController.dispose();
-    _confirmPasswordController.dispose();
-    super.dispose();
+  Widget _buildAnimatedTextField({
+    required TextEditingController controller,
+    required String label,
+    required IconData prefixIcon,
+    bool obscureText = false,
+    bool hasToggle = false,
+    VoidCallback? onToggle,
+    TextInputType? keyboardType,
+    String? Function(String?)? validator,
+    int delay = 0,
+  }) {
+    return AnimatedBuilder(
+      animation: _slideAnimation,
+      builder: (context, child) {
+        return SlideTransition(
+          position: Tween<Offset>(
+            begin: Offset(0, 0.3),
+            end: Offset.zero,
+          ).animate(CurvedAnimation(
+            parent: _slideController,
+            curve: Interval(
+              delay * 0.1,
+              (delay * 0.1) + 0.4,
+              curve: Curves.easeOutBack,
+            ),
+          )),
+          child: FadeTransition(
+            opacity: Tween<double>(
+              begin: 0.0,
+              end: 1.0,
+            ).animate(CurvedAnimation(
+              parent: _slideController,
+              curve: Interval(
+                delay * 0.1,
+                (delay * 0.1) + 0.6,
+                curve: Curves.easeIn,
+              ),
+            )),
+            child: Container(
+              margin: EdgeInsets.only(bottom: 20),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(35),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    spreadRadius: 1,
+                    blurRadius: 10,
+                    offset: Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: TextFormField(
+                controller: controller,
+                obscureText: obscureText,
+                keyboardType: keyboardType,
+                validator: validator,
+                style: TextStyle(fontSize: 16),
+                decoration: InputDecoration(
+                  labelText: label,
+                  labelStyle: TextStyle(color: Colors.grey[600]),
+                  prefixIcon: Container(
+                    margin: EdgeInsets.all(12),
+                    padding: EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [primaryColor.withOpacity(0.8), const Color.fromARGB(255, 72, 191, 255).withOpacity(0.8)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(prefixIcon, color: Colors.white, size: 20),
+                  ),
+                  suffixIcon: hasToggle
+                      ? IconButton(
+                          icon: Icon(
+                            obscureText ? Icons.visibility : Icons.visibility_off,
+                            color: Colors.grey[600],
+                          ),
+                          onPressed: onToggle,
+                        )
+                      : null,
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(35),
+                    borderSide: BorderSide.none,
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(35),
+                    borderSide: BorderSide(color: Colors.grey[300]!, width: 1),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(35),
+                    borderSide: BorderSide(color: primaryColor, width: 2),
+                  ),
+                  contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    OutlineInputBorder border = OutlineInputBorder(
-      borderRadius: BorderRadius.circular(35),
-      borderSide: BorderSide(width: 2.0, color: Colors.black),
-    );
-
     return Scaffold(
-      appBar: AppBar(title: Text("Edit Profile"), centerTitle: true),
-      body: _isLoading
-          ? Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: EdgeInsets.all(20),
-              child: Form(
-                key: _formKey,
+      backgroundColor: Colors.grey[50],
+      appBar: AppBar(
+        title: Text(
+          "Edit Profile",
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
+        ),
+        centerTitle: true,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_ios, color: Colors.black87),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      body: FadeTransition(
+        opacity: _fadeAnimation,
+        child: _isLoading
+            ? Center(
                 child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    GestureDetector(
-                      onTap: _pickImage,
-                      child: _buildProfileAvatar(),
-                    ),
-                    SizedBox(height: 30),
-                    TextFormField(
-                      controller: _phoneController,
-                      decoration: InputDecoration(
-                        labelText: "Phone Number",
-                        prefixIcon: Icon(Icons.phone),
-                        border: border,
-                        enabledBorder: border.copyWith(borderSide: BorderSide(width: 2)),
-                        focusedBorder: border.copyWith(borderSide: BorderSide(color: Colors.amber)),
-                      ),
-                      keyboardType: TextInputType.phone,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter phone number';
-                        }
-                        return null;
-                      },
+                    CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
+                      strokeWidth: 3,
                     ),
                     SizedBox(height: 20),
-                    TextFormField(
-                      controller: _currentPasswordController,
-                      obscureText: _obscureCurrentPassword,
-                      decoration: InputDecoration(
-                        labelText: "Current Password",
-                        prefixIcon: Icon(Icons.lock),
-                        suffixIcon: IconButton(
-                          icon: Icon(_obscureCurrentPassword ? Icons.visibility : Icons.visibility_off),
-                          onPressed: () {
-                            setState(() {
-                              _obscureCurrentPassword = !_obscureCurrentPassword;
-                            });
-                          },
-                        ),
-                        border: border,
-                        enabledBorder: border,
-                        focusedBorder: border.copyWith(borderSide: BorderSide(color: Colors.amber)),
+                    Text(
+                      "Updating profile...",
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                        fontSize: 16,
                       ),
-                      validator: (value) {
-                        if (_newPasswordController.text.isNotEmpty && (value == null || value.isEmpty)) {
-                          return 'Please enter current password';
-                        }
-                        return null;
-                      },
-                    ),
-                    SizedBox(height: 20),
-                    TextFormField(
-                      controller: _newPasswordController,
-                      obscureText: _obscureNewPassword,
-                      decoration: InputDecoration(
-                        labelText: "New Password",
-                        prefixIcon: Icon(Icons.lock_outline),
-                        suffixIcon: IconButton(
-                          icon: Icon(_obscureNewPassword ? Icons.visibility : Icons.visibility_off),
-                          onPressed: () {
-                            setState(() {
-                              _obscureNewPassword = !_obscureNewPassword;
-                            });
-                          },
-                        ),
-                        border: border,
-                        enabledBorder: border,
-                        focusedBorder: border.copyWith(borderSide: BorderSide(color: Colors.amber)),
-                      ),
-                      validator: (value) {
-                        if (value != null && value.isNotEmpty && value.length < 6) {
-                          return 'Password must be at least 6 characters';
-                        }
-                        return null;
-                      },
-                    ),
-                    SizedBox(height: 20),
-                    TextFormField(
-                      controller: _confirmPasswordController,
-                      obscureText: _obscureConfirmPassword,
-                      decoration: InputDecoration(
-                        labelText: "Confirm New Password",
-                        prefixIcon: Icon(Icons.lock_outline),
-                        suffixIcon: IconButton(
-                          icon: Icon(_obscureConfirmPassword ? Icons.visibility : Icons.visibility_off),
-                          onPressed: () {
-                            setState(() {
-                              _obscureConfirmPassword = !_obscureConfirmPassword;
-                            });
-                          },
-                        ),
-                        border: border,
-                        enabledBorder: border,
-                        focusedBorder: border.copyWith(borderSide: BorderSide(color: Colors.amber)),
-                      ),
-                      validator: (value) {
-                        if (_newPasswordController.text.isNotEmpty && value != _newPasswordController.text) {
-                          return 'Passwords do not match';
-                        }
-                        return null;
-                      },
-                    ),
-                    SizedBox(height: 30),
-                    ElevatedButton(
-                      onPressed: _saveChanges,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.black,
-                        padding: EdgeInsets.symmetric(horizontal: 40, vertical: 15),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(35)),
-                      ),
-                      child: Text("Save Changes", style: TextStyle(color: Colors.white)),
                     ),
                   ],
                 ),
+              )
+            : SingleChildScrollView(
+                padding: EdgeInsets.all(20),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    children: [
+                      SizedBox(height: 20),
+                      GestureDetector(
+                        onTap: _pickImage,
+                        child: _buildProfileAvatar(),
+                      ),
+                      SizedBox(height: 10),
+                      Text(
+                        "Tap to change photo",
+                        style: TextStyle(
+                          color: Colors.grey[600],
+                          fontSize: 14,
+                        ),
+                      ),
+                      SizedBox(height: 40),
+                      
+                      _buildAnimatedTextField(
+                        controller: _phoneController,
+                        label: "Phone Number",
+                        prefixIcon: Icons.phone,
+                        keyboardType: TextInputType.phone,
+                        delay: 1,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter phone number';
+                          }
+                          return null;
+                        },
+                      ),
+                      
+                      _buildAnimatedTextField(
+                        controller: _currentPasswordController,
+                        label: "Current Password",
+                        prefixIcon: Icons.lock,
+                        obscureText: _obscureCurrentPassword,
+                        hasToggle: true,
+                        delay: 2,
+                        onToggle: () {
+                          setState(() {
+                            _obscureCurrentPassword = !_obscureCurrentPassword;
+                          });
+                        },
+                        validator: (value) {
+                          if (_newPasswordController.text.isNotEmpty && (value == null || value.isEmpty)) {
+                            return 'Please enter current password';
+                          }
+                          return null;
+                        },
+                      ),
+                      
+                      _buildAnimatedTextField(
+                        controller: _newPasswordController,
+                        label: "New Password",
+                        prefixIcon: Icons.lock_outline,
+                        obscureText: _obscureNewPassword,
+                        hasToggle: true,
+                        delay: 3,
+                        onToggle: () {
+                          setState(() {
+                            _obscureNewPassword = !_obscureNewPassword;
+                          });
+                        },
+                        validator: (value) {
+                          if (value != null && value.isNotEmpty && value.length < 6) {
+                            return 'Password must be at least 6 characters';
+                          }
+                          return null;
+                        },
+                      ),
+                      
+                      _buildAnimatedTextField(
+                        controller: _confirmPasswordController,
+                        label: "Confirm New Password",
+                        prefixIcon: Icons.lock_outline,
+                        obscureText: _obscureConfirmPassword,
+                        hasToggle: true,
+                        delay: 4,
+                        onToggle: () {
+                          setState(() {
+                            _obscureConfirmPassword = !_obscureConfirmPassword;
+                          });
+                        },
+                        validator: (value) {
+                          if (_newPasswordController.text.isNotEmpty && value != _newPasswordController.text) {
+                            return 'Passwords do not match';
+                          }
+                          return null;
+                        },
+                      ),
+                      
+                      SizedBox(height: 20),
+                      FadeInUp(
+                    delay: const Duration(milliseconds: 800),
+                    child: _isLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : MyButton(text: "Save Changes", onTap: _saveChanges),
+                  ),
+                  
+                      
+                      // AnimatedBuilder(
+                      //   animation: _buttonScaleAnimation,
+                      //   builder: (context, child) {
+                      //     return Transform.scale(
+                      //       scale: _buttonScaleAnimation.value,
+                      //       child: Container(
+                      //         width: double.infinity,
+                      //         height: 55,
+                      //         decoration: BoxDecoration(
+                      //           gradient: LinearGradient(
+                      //             colors: [primaryColor, const Color.fromARGB(255, 65, 220, 255)],
+                      //             begin: Alignment.topLeft,
+                      //             end: Alignment.bottomRight,
+                      //           ),
+                      //           borderRadius: BorderRadius.circular(35),
+                      //           boxShadow: [
+                      //             BoxShadow(
+                      //               color: primaryColor.withOpacity(0.4),
+                      //               spreadRadius: 2,
+                      //               blurRadius: 15,
+                      //               offset: Offset(0, 5),
+                      //             ),
+                      //           ],
+                      //         ),
+                      //         child: ElevatedButton(
+                      //           onPressed: _saveChanges,
+                      //           style: ElevatedButton.styleFrom(
+                      //             backgroundColor: Colors.black,
+                      //             shadowColor: Colors.transparent,
+                      //             shape: RoundedRectangleBorder(
+                      //               borderRadius: BorderRadius.circular(35),
+                      //             ),
+                      //           ),
+                      //           child: Text(
+                      //             "Save Changes",
+                      //             style: TextStyle(
+                      //               color: Colors.white,
+                      //               fontSize: 18,
+                      //               fontWeight: FontWeight.bold,
+                      //             ),
+                      //           ),
+                      //         ),
+                      //       ),
+                      //     );
+                      //   },
+                      // ),
+                      
+                      SizedBox(height: 30),
+                    ],
+                  ),
+                ),
               ),
-            ),
+      ),
     );
   }
 }
