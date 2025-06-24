@@ -240,9 +240,10 @@ class _OrgReservationsPageState extends State<OrgReservationsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: Text("Trip Reservations"),
-        backgroundColor: Colors.blue,
+        backgroundColor: Colors.white,
       ),
       body: isLoading
           ? Center(child: CircularProgressIndicator())

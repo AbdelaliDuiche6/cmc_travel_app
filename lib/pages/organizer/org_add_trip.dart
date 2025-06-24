@@ -258,7 +258,9 @@ class _AddTripPageState extends State<AddTripPage> {
     );
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Create Trip")),
+      backgroundColor: Colors.white,
+      appBar: AppBar(title: const Text("Create Trip"),
+      backgroundColor: Colors.white,),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Form(

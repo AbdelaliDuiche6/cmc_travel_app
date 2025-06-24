@@ -519,7 +519,7 @@ class _OrgHomePageState extends State<OrgHomePage> {
                       Icon(Icons.attach_money, size: 16),
                       SizedBox(width: 5),
                       Text(
-                        '\$${trip['price_per_person']?.toStringAsFixed(2) ?? '-'}',
+                        '${trip['price_per_person']?.toStringAsFixed(2) ?? '-'} \MAD ',
                       ),
                     ],
                   ),
@@ -618,14 +618,15 @@ class _OrgHomePageState extends State<OrgHomePage> {
           controller: _scrollController,
           slivers: [
             SliverAppBar(
-              expandedHeight: MediaQuery.of(context).size.height / 2.5,
+              backgroundColor: Colors.blue[200],
+              expandedHeight: 300,
               pinned: true,
               flexibleSpace: FlexibleSpaceBar(
                 background: Stack(
                   children: [
                     Image.asset(
-                      "assets/images/image.png",
-                      width: MediaQuery.of(context).size.width,
+                      "assets/Images/backgroundImg.jpg",
+                      width: 400,
                       height: MediaQuery.of(context).size.height / 2.5,
                       fit: BoxFit.cover,
                     ),
