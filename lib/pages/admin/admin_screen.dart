@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_svg/svg.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:cmc_travel_app/pages/admin/users_screen.dart';
@@ -26,6 +27,18 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
   // Pour les animations de carte
   List<bool> _hoveredCards = [];
   int _selectedIndex = 0;
+  void _navigateBottomBar(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+  }
+
+  final screens = [
+    AdminScreen(),
+    UsersScreen(),
+    StatestiquePage(),
+    ProfileScreen(),
+  ];
 
   @override
   void initState() {
@@ -631,15 +644,22 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
             ),
           ),
         ),
-        title: const Text(
-          "Commands Trips",
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 0.5,
-          ),
+         title:  Text(
+        "Commands Trips",
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 24,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.8,
+          shadows: [
+            Shadow(
+              color: Colors.black26,
+              offset: Offset(0, 2),
+              blurRadius: 4,
+            ),
+          ],
         ),
+      ),
 
         centerTitle: true,
       ),
@@ -858,82 +878,120 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
 
                   ),
 
-    bottomNavigationBar: Container(
-  decoration: BoxDecoration(
-    gradient: LinearGradient(
-      begin: Alignment.topCenter,
-      end: Alignment.bottomCenter,
-      colors: [
-        Colors.white.withOpacity(0.95),
-        Colors.white,
-      ],
-    ),
-    boxShadow: [
-      BoxShadow(
-        color: Colors.grey.withOpacity(0.08),
-        blurRadius: 20,
-        offset: const Offset(0, -8),
-        spreadRadius: 0,
-      ),
-      BoxShadow(
-        color: primaryColor.withOpacity(0.05),
-        blurRadius: 40,
-        offset: const Offset(0, -2),
-        spreadRadius: -5,
-      ),
-    ],
-    borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-  ),
-  child: ClipRRect(
-    borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-    child: NavigationBar(
-      height: 85,
-      selectedIndex: _selectedIndex,
-      onDestinationSelected: (index) {
-        HapticFeedback.lightImpact(); // Add haptic feedback
-        setState(() => _selectedIndex = index);
-        _navigate(index);
-      },
-      backgroundColor: Colors.transparent,
-      indicatorColor: primaryColor.withOpacity(0.15),
-      indicatorShape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-      animationDuration: const Duration(milliseconds: 400),
-      destinations: [
-        _buildAnimatedDestination(
-          index: 0,
-          selectedIcon: Icons.home_rounded,
-          unselectedIcon: Icons.home_outlined,
-          label: 'Home',
-        ),
-        _buildAnimatedDestination(
-          index: 1,
-          selectedIcon: Icons.people_rounded,
-          unselectedIcon: Icons.people_outline_rounded,
-          label: 'Users',
-        ),
-        _buildAnimatedDestination(
-          index: 2,
-          selectedIcon: Icons.bar_chart_rounded,
-          unselectedIcon: Icons.bar_chart_outlined,
-          label: 'Stats',
-        ),
-        _buildAnimatedDestination(
-          index: 3,
-          selectedIcon: Icons.person_rounded,
-          unselectedIcon: Icons.person_outline_rounded,
-          label: 'Profile',
-        ),
-      ],
-    ),
-  ),
-),
+//     bottomNavigationBar: Container(
+//   decoration: BoxDecoration(
+//     gradient: LinearGradient(
+//       begin: Alignment.topCenter,
+//       end: Alignment.bottomCenter,
+//       colors: [
+//         Colors.white.withOpacity(0.95),
+//         Colors.white,
+//       ],
+//     ),
+//     boxShadow: [
+//       BoxShadow(
+//         color: Colors.grey.withOpacity(0.08),
+//         blurRadius: 20,
+//         offset: const Offset(0, -8),
+//         spreadRadius: 0,
+//       ),
+//       BoxShadow(
+//         color: primaryColor.withOpacity(0.05),
+//         blurRadius: 40,
+//         offset: const Offset(0, -2),
+//         spreadRadius: -5,
+//       ),
+//     ],
+//     borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+//   ),
+//   child: ClipRRect(
+//     borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+//     child: NavigationBar(
+//       height: 85,
+//       selectedIndex: _selectedIndex,
+//       onDestinationSelected: (index) {
+//         HapticFeedback.lightImpact(); // Add haptic feedback
+//         setState(() => _selectedIndex = index);
+//         _navigate(index);
+//       },
+//       backgroundColor: Colors.transparent,
+//       indicatorColor: primaryColor.withOpacity(0.15),
+//       indicatorShape: RoundedRectangleBorder(
+//         borderRadius: BorderRadius.circular(16),
+//       ),
+//       labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+//       animationDuration: const Duration(milliseconds: 400),
+//       destinations: [
+//         _buildAnimatedDestination(
+//           index: 0,
+//           selectedIcon: Icons.home_rounded,
+//           unselectedIcon: Icons.home_outlined,
+//           label: 'Home',
+//         ),
+//         _buildAnimatedDestination(
+//           index: 1,
+//           selectedIcon: Icons.people_rounded,
+//           unselectedIcon: Icons.people_outline_rounded,
+//           label: 'Users',
+//         ),
+//         _buildAnimatedDestination(
+//           index: 2,
+//           selectedIcon: Icons.bar_chart_rounded,
+//           unselectedIcon: Icons.bar_chart_outlined,
+//           label: 'Stats',
+//         ),
+//         _buildAnimatedDestination(
+//           index: 3,
+//           selectedIcon: Icons.person_rounded,
+//           unselectedIcon: Icons.person_outline_rounded,
+//           label: 'Profile',
+//         ),
+//       ],
+//     ),
+//   ),
+// ),
+bottomNavigationBar: buildBottomNavigationBar(),
     );
   }
 
-  
+  BottomNavigationBar buildBottomNavigationBar() {
+  return BottomNavigationBar(
+    onTap: (index) {
+      HapticFeedback.lightImpact(); // Add haptic feedback
+      setState(() {
+        _selectedIndex = index;
+      });
+      _navigate(index); // Call your navigation method
+    },
+    backgroundColor: Colors.white,
+    type: BottomNavigationBarType.fixed,
+    selectedItemColor: primaryColor,
+    unselectedItemColor: Colors.grey,  // Added unselected item color
+    selectedIconTheme: IconThemeData(color: primaryColor),
+    elevation: 0.0,
+    currentIndex: _selectedIndex,
+    items: [
+      BottomNavigationBarItem(
+        icon: SvgPicture.asset('images/home.svg'),
+        label: 'Home',
+      ),
+      BottomNavigationBarItem(
+        icon: SvgPicture.asset('images/notification.svg'),  // Changed icon
+        label: 'Notifications',
+      ),
+      BottomNavigationBarItem(
+        icon: SvgPicture.asset('images/statistics.svg', width: 35, height: 35,),
+        label: 'Statestique',
+      ),
+      BottomNavigationBarItem(
+        icon: SvgPicture.asset('images/profile.svg'),
+        label: 'Profile',
+      ),
+    ],
+  );
+}
+
+
 NavigationDestination _buildAnimatedDestination({
   required int index,
   required IconData selectedIcon,
