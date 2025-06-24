@@ -12,7 +12,8 @@ class AddTripPage extends StatefulWidget {
   State<AddTripPage> createState() => _AddTripPageState();
 }
 
-class _AddTripPageState extends State<AddTripPage> {
+class _AddTripPageState extends State<AddTripPage>
+    with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _supabase = Supabase.instance.client;
   final String _bucketName = 'trip-images';
@@ -21,7 +22,7 @@ class _AddTripPageState extends State<AddTripPage> {
   String? _type;
   DateTime? _date;
   File? _image;
-  File? _programFile; // Changed to File like image
+  File? _programFile;
   bool _isUploading = false;
 
   final _titleController = TextEditingController();
@@ -30,11 +31,81 @@ class _AddTripPageState extends State<AddTripPage> {
   final _seatsController = TextEditingController();
   final _dateController = TextEditingController();
 
+  // Animation controllers
+  late AnimationController _fadeController;
+  late AnimationController _slideController;
+  late AnimationController _scaleController;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
+  late Animation<double> _scaleAnimation;
+
   final List<DateTime> schoolHolidays = [
     DateTime(2025, 5, 24),
     DateTime(2025, 1, 1),
     DateTime(2025, 4, 20),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _initAnimations();
+  }
+
+  void _initAnimations() {
+    _fadeController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+    _slideController = AnimationController(
+      duration: const Duration(milliseconds: 1000),
+      vsync: this,
+    );
+    _scaleController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _fadeController,
+      curve: Curves.easeInOut,
+    ));
+
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.5),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _slideController,
+      curve: Curves.easeOutCubic,
+    ));
+
+    _scaleAnimation = Tween<double>(
+      begin: 0.8,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _scaleController,
+      curve: Curves.elasticOut,
+    ));
+
+    _fadeController.forward();
+    _slideController.forward();
+    _scaleController.forward();
+  }
+
+  @override
+  void dispose() {
+    _fadeController.dispose();
+    _slideController.dispose();
+    _scaleController.dispose();
+    _titleController.dispose();
+    _descController.dispose();
+    _priceController.dispose();
+    _seatsController.dispose();
+    _dateController.dispose();
+    super.dispose();
+  }
 
   bool _isWeekend(DateTime date) {
     return date.weekday == DateTime.saturday || date.weekday == DateTime.sunday;
@@ -63,6 +134,18 @@ class _AddTripPageState extends State<AddTripPage> {
       firstDate: DateTime(2020),
       lastDate: DateTime(2100),
       selectableDayPredicate: (date) => _isWeekend(date) || _isHoliday(date),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary:  Color.fromARGB(255, 26, 142, 234),
+              onPrimary: Colors.white,
+              onSurface: Colors.black,
+            ),
+          ),
+          child: child!,
+        );
+      },
     );
 
     if (picked != null) {
@@ -84,6 +167,9 @@ class _AddTripPageState extends State<AddTripPage> {
       setState(() {
         _image = File(picked.path);
       });
+      // Animation pour l'image
+      _scaleController.reset();
+      _scaleController.forward();
     }
   }
 
@@ -100,19 +186,47 @@ class _AddTripPageState extends State<AddTripPage> {
           _programFile = File(result.files.single.path!);
         });
         
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('PDF selected: ${result.files.single.name}')),
-        );
+        _showSuccessSnackBar('PDF selected: ${result.files.single.name}');
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No PDF file selected')),
-        );
+        _showErrorSnackBar('No PDF files selected');
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error selecting PDF: ${e.toString()}')),
-      );
+      _showErrorSnackBar('PDF selection error: ${e.toString()}');
     }
+  }
+
+  void _showSuccessSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle, color: Colors.white),
+            const SizedBox(width: 8),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: Colors.green,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.error, color: Colors.white),
+            const SizedBox(width: 8),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
   }
 
   Future<String?> _uploadImage() async {
@@ -134,9 +248,7 @@ class _AddTripPageState extends State<AddTripPage> {
           .from(_bucketName)
           .getPublicUrl(fileName);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Image upload failed: ${e.toString()}')),
-      );
+      _showErrorSnackBar('Failed to download\'image: ${e.toString()}');
       return null;
     }
   }
@@ -159,9 +271,7 @@ class _AddTripPageState extends State<AddTripPage> {
           .from(_programBucketName)
           .getPublicUrl(fileName);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('PDF upload failed: ${e.toString()}')),
-      );
+      _showErrorSnackBar('PDF download fails: ${e.toString()}');
       return null;
     }
   }
@@ -170,9 +280,7 @@ class _AddTripPageState extends State<AddTripPage> {
     if (!_formKey.currentState!.validate()) return;
 
     if (_date == null || (!_isWeekend(_date!) && !_isHoliday(_date!))) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Date must be weekend or holiday')),
-      );
+      _showErrorSnackBar('The date must be a weekend or public holiday');
       return;
     }
 
@@ -195,36 +303,31 @@ class _AddTripPageState extends State<AddTripPage> {
 
       final userId = _supabase.auth.currentUser?.id;
       if (userId == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Authentication required')),
-        );
+        _showErrorSnackBar('Authentication required');
         return;
       }
 
       await _supabase.from('Voyage').insert({
-  'title': _titleController.text,
-  'description': _descController.text,
-  'type': _type!,
-  'date': _date!.toIso8601String(),
-  'price_per_person': double.parse(_priceController.text),
-  'nbr_places': int.parse(_seatsController.text),  // Set total seats
-  'free_places': int.parse(_seatsController.text), // Set free seats to the same value initially
-  'status': 'en_cours',
-  'image_url': imageUrl,
-  'program_url': programUrl,
-  'organizer_id': userId,
-});
+        'title': _titleController.text,
+        'description': _descController.text,
+        'type': _type!,
+        'date': _date!.toIso8601String(),
+        'price_per_person': double.parse(_priceController.text),
+        'nbr_places': int.parse(_seatsController.text),
+        'free_places': int.parse(_seatsController.text),
+        'status': 'en_cours',
+        'image_url': imageUrl,
+        'program_url': programUrl,
+        'organizer_id': userId,
+      });
 
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Trip published successfully!")),
-      );
+      _showSuccessSnackBar("Successfully published trip!");
 
       // Clear the form
       _formKey.currentState!.reset();
       setState(() {
         _image = null;
-        _programFile = null; // Changed from _programPath
+        _programFile = null;
         _date = null;
         _type = null;
         _titleController.clear();
@@ -238,9 +341,7 @@ class _AddTripPageState extends State<AddTripPage> {
         Navigator.pop(context);
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Publishing failed: ${e.toString()}')),
-      );
+      _showErrorSnackBar('Publication failure: ${e.toString()}');
     } finally {
       if (mounted) {
         setState(() {
@@ -250,177 +351,450 @@ class _AddTripPageState extends State<AddTripPage> {
     }
   }
 
+  Widget _buildAnimatedFormField({
+    required Widget child,
+    required int index,
+  }) {
+    return AnimatedBuilder(
+      animation: _slideAnimation,
+      builder: (context, child) {
+        return Transform.translate(
+          offset: Offset(
+            0, 
+            _slideAnimation.value.dy * (index * 10)
+          ),
+          child: FadeTransition(
+            opacity: _fadeAnimation,
+            child: child,
+          ),
+        );
+      },
+      child: child,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final border = OutlineInputBorder(
-      borderRadius: BorderRadius.circular(35),
-      borderSide: const BorderSide(width: 2.0, color: Colors.black),
-    );
-
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(title: const Text("Create Trip"),
-      backgroundColor: Colors.white,),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: GestureDetector(
-                    onTap: _pickImage,
-                    child: Container(
-                      height: 180,
-                      width: 180,
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.black45, width: 2.0),
-                        borderRadius: BorderRadius.circular(20),
-                        image: _image != null
-                            ? DecorationImage(
-                                image: FileImage(_image!),
-                                fit: BoxFit.cover,
-                              )
-                            : null,
-                      ),
-                      child: _image == null
-                          ? const Icon(Icons.camera_alt_outlined, size: 40)
-                          : null,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                TextFormField(
-                  controller: _titleController,
-                  decoration: InputDecoration(
-                    labelText: "Title",
-                    border: border,
-                    enabledBorder: border,
-                  ),
-                  validator: (value) =>
-                      value == null || value.isEmpty ? 'Required' : null,
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _descController,
-                  decoration: InputDecoration(
-                    labelText: "Description",
-                    border: border,
-                    enabledBorder: border,
-                  ),
-                  validator: (value) =>
-                      value == null || value.isEmpty ? 'Required' : null,
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  decoration: InputDecoration(
-                    labelText: "Type",
-                    border: border,
-                    enabledBorder: border,
-                  ),
-                  value: _type,
-                  onChanged: (value) => setState(() => _type = value),
-                  items: [
-                        'City',
-                        'Event',
-                        'Sport',
-                      ]
-                      .map(
-                        (type) => DropdownMenuItem(
-                          value: type,
-                          child: Text(type),
-                        ),
-                      )
-                      .toList(),
-                  validator: (value) => value == null ? 'Please select a type' : null,
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _dateController,
-                  readOnly: true,
-                  decoration: InputDecoration(
-                    labelText: "Date",
-                    border: border,
-                    enabledBorder: border,
-                  ),
-                  onTap: _pickDate,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) return 'Required';
-                    if (_date == null ||
-                        (!_isWeekend(_date!) && !_isHoliday(_date!))) {
-                      return 'Must be weekend or holiday';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _priceController,
-                        decoration: InputDecoration(
-                          labelText: "Price",
-                          border: border,
-                          enabledBorder: border,
-                        ),
-                        keyboardType: TextInputType.number,
-                        validator: (value) =>
-                            value == null || value.isEmpty ? 'Required' : null,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _seatsController,
-                        decoration: InputDecoration(
-                          labelText: "Seats",
-                          border: border,
-                          enabledBorder: border,
-                        ),
-                        keyboardType: TextInputType.number,
-                        validator: (value) =>
-                            value == null || value.isEmpty ? 'Required' : null,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                ListTile(
-                  title: Text(
-                    _programFile == null
-                        ? 'Select PDF Program'
-                        : path.basename(_programFile!.path),
-                  ),
-                  trailing: const Icon(Icons.attach_file),
-                  onTap: _pickPDF,
-                ),
-                const SizedBox(height: 32),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _isUploading ? null : _publish,
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(35),
-                      ),
-                      backgroundColor: Colors.black,
-                      foregroundColor: Colors.white,
-                    ),
-                    child: _isUploading
-                        ? const CircularProgressIndicator(
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                          )
-                        : const Text("Publish", style: TextStyle(fontSize: 16)),
-                  ),
-                ),
+      backgroundColor: const Color(0xFFF8F9FA),
+      appBar: AppBar(
+        title: const Text(
+          "Create Trip",
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+        backgroundColor:  Color.fromARGB(255, 26, 142, 234),
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(
+            bottom: Radius.circular(20),
+          ),
+        ),
+      ),
+      body: FadeTransition(
+        opacity: _fadeAnimation,
+        child: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Color(0xFFF8F9FA),
+                Color(0xFFE9ECEF),
               ],
             ),
           ),
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Form(
+              key: _formKey,
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Image picker avec animation
+                    _buildAnimatedFormField(
+                      index: 0,
+                      child: Center(
+                        child: ScaleTransition(
+                          scale: _scaleAnimation,
+                          child: GestureDetector(
+                            onTap: _pickImage,
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 300),
+                              height: 200,
+                              width: 200,
+                              decoration: BoxDecoration(
+                                gradient: _image != null 
+                                  ? null 
+                                  : const LinearGradient(
+                                      colors: [ Color.fromARGB(255, 12, 7, 93),  Color.fromARGB(255, 26, 142, 234)],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    ),
+                                borderRadius: BorderRadius.circular(25),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Color.fromARGB(255, 26, 142, 234).withOpacity(0.3),
+                                    blurRadius: 15,
+                                    offset: const Offset(0, 8),
+                                  ),
+                                ],
+                                image: _image != null
+                                    ? DecorationImage(
+                                        image: FileImage(_image!),
+                                        fit: BoxFit.cover,
+                                      )
+                                    : null,
+                              ),
+                              child: _image == null
+                                  ? const Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Icons.camera_alt_outlined,
+                                          size: 50,
+                                          color: Colors.white,
+                                        ),
+                                        SizedBox(height: 8),
+                                        Text(
+                                          'Add image',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    )
+                                  : Container(
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(25),
+                                        color: Colors.black.withOpacity(0.3),
+                                      ),
+                                      child: const Center(
+                                        child: Icon(
+                                          Icons.edit,
+                                          color: Colors.white,
+                                          size: 30,
+                                        ),
+                                      ),
+                                    ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 30),
+
+                    // Form fields avec animations
+                    _buildAnimatedFormField(
+                      index: 1,
+                      child: _buildModernTextField(
+                        controller: _titleController,
+                        label: "Title",
+                        icon: Icons.title,
+                        validator: (value) =>
+                            value == null || value.isEmpty ? 'Requis' : null,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    _buildAnimatedFormField(
+                      index: 2,
+                      child: _buildModernTextField(
+                        controller: _descController,
+                        label: "Description",
+                        icon: Icons.description,
+                        maxLines: 3,
+                        validator: (value) =>
+                            value == null || value.isEmpty ? 'Requis' : null,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    _buildAnimatedFormField(
+                      index: 3,
+                      child: _buildModernDropdown(),
+                    ),
+                    const SizedBox(height: 20),
+
+                    _buildAnimatedFormField(
+                      index: 4,
+                      child: _buildModernTextField(
+                        controller: _dateController,
+                        label: "Date",
+                        icon: Icons.calendar_today,
+                        readOnly: true,
+                        onTap: _pickDate,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) return 'Requis';
+                          if (_date == null ||
+                              (!_isWeekend(_date!) && !_isHoliday(_date!))) {
+                            return 'Must be a weekend or public holiday';
+                          }
+                          return null;
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    _buildAnimatedFormField(
+                      index: 5,
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: _buildModernTextField(
+                              controller: _priceController,
+                              label: "Prix (DH)",
+                              icon: Icons.monetization_on,
+                              keyboardType: TextInputType.number,
+                              validator: (value) =>
+                                  value == null || value.isEmpty ? 'Requis' : null,
+                            ),
+                          ),
+                          const SizedBox(width: 15),
+                          Expanded(
+                            child: _buildModernTextField(
+                              controller: _seatsController,
+                              label: "Places",
+                              icon: Icons.airline_seat_recline_normal,
+                              keyboardType: TextInputType.number,
+                              validator: (value) =>
+                                  value == null || value.isEmpty ? 'Requis' : null,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    _buildAnimatedFormField(
+                      index: 6,
+                      child: _buildPDFSelector(),
+                    ),
+                    const SizedBox(height: 40),
+
+                    _buildAnimatedFormField(
+                      index: 7,
+                      child: _buildPublishButton(),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildModernTextField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    int maxLines = 1,
+    bool readOnly = false,
+    VoidCallback? onTap,
+    TextInputType? keyboardType,
+    String? Function(String?)? validator,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: TextFormField(
+        controller: controller,
+        readOnly: readOnly,
+        onTap: onTap,
+        keyboardType: keyboardType,
+        maxLines: maxLines,
+        validator: validator,
+        style: const TextStyle(fontSize: 16),
+        decoration: InputDecoration(
+          labelText: label,
+          prefixIcon: Icon(icon, color: Colors.black),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(20),
+            borderSide: BorderSide.none,
+          ),
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: 16,
+          ),
+          labelStyle: TextStyle(color: Colors.grey[600]),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildModernDropdown() {
+  return Container(
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(20),
+      color: Colors.white,
+      boxShadow: [
+        BoxShadow(
+          color: Colors.grey.withOpacity(0.1),
+          blurRadius: 10,
+          offset: const Offset(0, 5),
+        ),
+      ],
+    ),
+    child: DropdownButtonFormField<String>(
+      dropdownColor: Colors.white,
+      decoration: InputDecoration(
+        labelText: "Type",
+        prefixIcon: const Icon(Icons.category, color: Colors.black),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(20),
+          borderSide: BorderSide.none,
+        ),
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 20,
+          vertical: 16,
+        ),
+        labelStyle: TextStyle(color: Colors.grey[600]),
+      ),
+      value: _type,
+      onChanged: (value) => setState(() => _type = value),
+      items: [
+        'City',
+        'Event',
+        'Sport',
+      ].map(
+        (type) => DropdownMenuItem(
+          value: type,
+          child: Text(
+            type,
+            style: const TextStyle(fontSize: 16),
+          ),
+        ),
+      ).toList(),
+      validator: (value) => value == null ? 'Please select a type' : null,
+    ),
+  );
+}
+
+  Widget _buildPDFSelector() {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.black.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: const Icon(
+            Icons.picture_as_pdf,
+            color: Colors.black,
+          ),
+        ),
+        title: Text(
+          _programFile == null
+              ? 'Select PDF program'
+              : path.basename(_programFile!.path),
+          style: TextStyle(
+            fontSize: 16,
+            color: _programFile == null ? Colors.grey[600] : Colors.black87,
+            fontWeight: _programFile == null ? FontWeight.normal : FontWeight.w500,
+          ),
+        ),
+        trailing: const Icon(
+          Icons.upload_file,
+          color: Colors.black,
+        ),
+        onTap: _pickPDF,
+      ),
+    );
+  }
+
+  Widget _buildPublishButton() {
+    return Container(
+      width: double.infinity,
+      height: 60,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(30),
+        gradient: const LinearGradient(
+          colors: [Color.fromARGB(255, 0, 0, 0),  Color.fromARGB(255, 54, 54, 55)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.4),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: ElevatedButton(
+        onPressed: _isUploading ? null : _publish,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.transparent,
+          shadowColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(30),
+          ),
+        ),
+        child: _isUploading
+            ? const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      strokeWidth: 2,
+                    ),
+                  ),
+                  SizedBox(width: 12),
+                  Text(
+                    "Publication in progress...",
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              )
+            : const Text(
+                "Publish the trip",
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
       ),
     );
   }
