@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:cmc_travel_app/pages/stagiaire/screens/travel_details.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
