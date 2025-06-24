@@ -355,8 +355,14 @@ class _OrgReservationsPageState extends State<OrgReservationsPage> {
                                   ElevatedButton.icon(
                                     onPressed: () =>
                                         confirmCashPayment(res['id'], trip),
-                                    icon: const Icon(Icons.check),
-                                    label: const Text("Confirm Cash Payment"),
+                                    icon: const Icon(
+                                      Icons.check,
+                                      color: Colors.white,
+                                    ),
+                                    label: const Text(
+                                      "Confirm Cash Payment",
+                                      style: TextStyle(color: Colors.white),
+                                    ),
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: const Color.fromARGB(255, 27, 222, 118),
                                     ),
