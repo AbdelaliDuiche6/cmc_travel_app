@@ -45,7 +45,7 @@ class _HomeStagaireState extends State<HomeStagaire> {
         _applyFilters();
         isLoading = false;
       });
-    } catch (e, stackTrace) {
+    } catch (e) {
       setState(() {
         isLoading = false;
       });
