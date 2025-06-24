@@ -1,6 +1,8 @@
 import 'package:cmc_travel_app/pages/admin/admin_screen.dart';
 import 'package:cmc_travel_app/pages/admin/edit_profile.dart';
 import 'package:cmc_travel_app/pages/admin/statestique_screen.dart';
+import 'package:cmc_travel_app/pages/admin/edit_profile.dart';
+import 'package:cmc_travel_app/pages/admin/statestique_screen.dart';
 import 'package:cmc_travel_app/pages/admin/users_screen.dart';
 import 'package:cmc_travel_app/pages/login_screen.dart';
 import 'package:cmc_travel_app/services/auth/auth_service.dart';
@@ -189,6 +191,7 @@ Widget _buildInfoRow(IconData icon, String text, {
   final Color secondaryColor = const Color.fromARGB(255, 0, 0, 0);
   int _selectedIndex = 3;
 
+
     void logout() async {
     final authService = AuthService();
     authService.signOut();
@@ -235,6 +238,44 @@ Widget _buildInfoRow(IconData icon, String text, {
       );
     }
   }
+
+  // Widget _buildProfileAvatar() {
+  //   if (profilePictureUrl.isNotEmpty) {
+  //     return CircleAvatar(
+  //       radius: 60,
+  //       backgroundColor: Colors.grey[200],
+  //       child: ClipOval(
+  //         child: Image.network(
+  //           profilePictureUrl,
+  //           width: 120,
+  //           height: 120,
+  //           fit: BoxFit.cover,
+  //           loadingBuilder: (context, child, loadingProgress) {
+  //             if (loadingProgress == null) return child;
+  //             return Center(
+  //               child: CircularProgressIndicator(
+  //                 value: loadingProgress.expectedTotalBytes != null
+  //                     ? loadingProgress.cumulativeBytesLoaded / 
+  //                       loadingProgress.expectedTotalBytes!
+  //                     : null,
+  //               ),
+  //             );
+  //           },
+  //           errorBuilder: (context, error, stackTrace) {
+  //             print('Error loading image: $error');
+  //             return Icon(Icons.person, size: 60, color: Colors.grey);
+  //           },
+  //         ),
+  //       ),
+  //     );
+  //   } else {
+  //     return CircleAvatar(
+  //       radius: 60,
+  //       backgroundColor: Colors.grey[200],
+  //       child: Icon(Icons.person, size: 60, color: Colors.grey),
+  //     );
+  //   }
+  // }
   void _navigate(int index) {
     setState(() {
       _selectedIndex = index;
@@ -249,6 +290,7 @@ Widget _buildInfoRow(IconData icon, String text, {
         Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const UsersScreen()));
         break;
       case 2:
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const StatestiquePage()));
         Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const StatestiquePage()));
         break;
       case 3:

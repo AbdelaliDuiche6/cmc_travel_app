@@ -1,6 +1,6 @@
 import 'package:cmc_travel_app/pages/admin/admin_screen.dart';
 import 'package:cmc_travel_app/pages/login_screen.dart';
-import 'package:cmc_travel_app/pages/organizateur_screen.dart';
+import 'package:cmc_travel_app/pages/organizer/org_home_page.dart';
 import 'package:cmc_travel_app/pages/stagiaire_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -105,7 +105,7 @@ class AuthGate extends StatelessWidget {
               } else if (role == 'stagiaire') {
                 return const StagiaireScreen();
               } else if (role == 'organisateur') {
-                return const OrganizateurScreen();
+                return const OrgHomePage(); // Replace with your Organisateur screen
               } else {
                 return const LoginScreen(); // rôle inconnu
               }

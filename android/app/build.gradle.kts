@@ -9,9 +9,9 @@ plugins {
 }
 
 android {
+    ndkVersion = "27.0.12077973"
     namespace = "com.example.cmc_travel_app"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
 
     ndkVersion = "27.0.12077973"
     compileOptions {

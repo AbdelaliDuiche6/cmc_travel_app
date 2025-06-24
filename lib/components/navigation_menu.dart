@@ -1,7 +1,3 @@
-import 'package:cmc_travel_app/pages/admin/admin_screen.dart';
-import 'package:cmc_travel_app/pages/admin/statestique_screen.dart';
-import 'package:cmc_travel_app/pages/admin/profile_screen.dart';
-import 'package:cmc_travel_app/pages/admin/users_screen.dart';
 import 'package:flutter/material.dart';
 
 class NavigationMenu extends StatelessWidget {
