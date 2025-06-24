@@ -40,21 +40,14 @@ class _HomeStagaireState extends State<HomeStagaire> {
           .eq('status', 'accepted')
           .order('date', ascending: false);
 
-      debugPrint(
-        '************************ Fetched voyages: $response ***************************',
-      );
-
       final List<dynamic> data = response;
 
       setState(() {
-        debugPrint('Organizer: ${data[0]['profiles']}');
         travels = data.map((item) => Travel.fromMap(item)).toList();
         _applyFilters();
         isLoading = false;
       });
     } catch (e, stackTrace) {
-      debugPrint('Error fetching voyages: $e');
-      debugPrint('$stackTrace');
       setState(() {
         isLoading = false;
       });
