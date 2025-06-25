@@ -4,7 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 class MyButton extends StatelessWidget {
   final void Function()? onTap;
   final String text;
-  const MyButton({super.key,required this.text,required this.onTap});
+  const MyButton({super.key, required this.text, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -32,7 +32,7 @@ class MyButton extends StatelessWidget {
               fontSize: 20,
               fontWeight: FontWeight.bold,
             ),
-          ),  
+          ),
         ),
       ),
     )

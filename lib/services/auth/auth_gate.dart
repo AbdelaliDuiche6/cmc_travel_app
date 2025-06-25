@@ -5,6 +5,8 @@ import 'package:cmc_travel_app/pages/stagiaire_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../pages/stagiaire/trainee_screen.dart';
+
 class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
 
@@ -103,7 +105,7 @@ class AuthGate extends StatelessWidget {
               if (role == 'admin') {
                 return const AdminScreen();
               } else if (role == 'stagiaire') {
-                return const StagiaireScreen();
+                return const TraineeScreen();
               } else if (role == 'organisateur') {
                 return const OrgHomePage(); // Replace with your Organisateur screen
               } else {
