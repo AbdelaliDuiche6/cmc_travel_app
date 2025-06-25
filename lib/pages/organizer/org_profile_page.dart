@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'org_modify_page.dart';
+import 'package:another_flushbar/flushbar.dart';
 
 class OrgProfilePage extends StatefulWidget {
   @override
@@ -12,6 +13,7 @@ class OrgProfilePage extends StatefulWidget {
 
 class _OrgProfilePageState extends State<OrgProfilePage>
     with SingleTickerProviderStateMixin {
+      final supabase = Supabase.instance.client;
   String name = '';
   String email = '';
   String phone = '';
@@ -57,6 +59,24 @@ class _OrgProfilePageState extends State<OrgProfilePage>
     _controller.dispose();
     super.dispose();
   }
+
+Future<void> changRol() async{
+  final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
+    final userId = user.id;
+    try{
+      await supabase
+          .from("profiles")
+          .update({'role': 'stagiaire'})
+          .eq('id', userId);
+           _showSuccessSnackbar('mode changed');
+           logout();
+    }catch (e) {
+      print('Error signale comment: $e');
+      _showErrorSnackbar('Failed to change');
+    }
+}
+
 
   Future<void> _loadProfile() async {
     final user = Supabase.instance.client.auth.currentUser;
@@ -694,6 +714,45 @@ class _OrgProfilePageState extends State<OrgProfilePage>
                                       ),
                                     ],
                                   ),
+                                  SizedBox(height: 20,),
+                                  Container(
+  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+  decoration: BoxDecoration(
+    color: Colors.grey.shade50,
+    borderRadius: BorderRadius.circular(12),
+    border: Border.all(color: Colors.grey.shade300),
+  ),
+  child: Row(
+    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    children: [
+      Expanded(
+        child: Text(
+          "Switch to mode Participant",
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+            color: Colors.grey.shade700,
+          ),
+        ),
+      ),
+      SizedBox(width: 12),
+      Container(
+        decoration: BoxDecoration(
+          color: Colors.blue.shade50,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: IconButton(
+          onPressed: () => _showRoleChangeDialog(context),
+          icon: Icon(
+            Icons.swap_horiz_outlined,
+            color: Colors.blue.shade600,
+          ),
+          tooltip: "Change",
+        ),
+      ),
+    ],
+  ),
+),
                                   const SizedBox(height: 20),
                                   Container(
                                     width: double.infinity,
@@ -916,4 +975,108 @@ class _OrgProfilePageState extends State<OrgProfilePage>
       label: label,
     );
   }
+    void _showSuccessSnackbar(String message) {
+    Flushbar(
+      message: message,
+      duration: const Duration(seconds: 2),
+      backgroundColor: Colors.green,
+    ).show(context);
+  }
+
+  void _showErrorSnackbar(String message) {
+    Flushbar(
+      message: message,
+      duration: const Duration(seconds: 2),
+      backgroundColor: Colors.red,
+    ).show(context);
+  }
+
+  void _showRoleChangeDialog(BuildContext context) {
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: Row(
+          children: [
+            Icon(Icons.swap_horiz, color: Colors.blue),
+            SizedBox(width: 8),
+            Text("Change Role"),
+          ],
+        ),
+        content: Text(
+          "Are you sure you want to switch to Participant mode? This will change your current permissions and access level.",
+          style: TextStyle(fontSize: 16),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop(); // Close dialog
+            },
+            child: Text(
+              "Cancel",
+              style: TextStyle(color: Colors.grey),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).pop(); // Close dialog
+              changRol(); // Call your role change function
+              
+              // Show success snackbar
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Row(
+                    children: [
+                      Icon(Icons.check_circle, color: Colors.white),
+                      SizedBox(width: 8),
+                      Text("Role changed to Participant"),
+                    ],
+                  ),
+                  backgroundColor: Colors.green,
+                  duration: Duration(seconds: 2),
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: Text("Switch Role"),
+          ),
+        ],
+      );
+    },
+  );
+}
+
+// Alternative: Simple confirmation dialog
+void _showSimpleRoleDialog(BuildContext context) {
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text("Confirm Role Change"),
+      content: Text("Switch to Participant mode?"),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text("Cancel"),
+        ),
+        TextButton(
+          onPressed: () {
+            Navigator.pop(context);
+            changRol();
+          },
+          child: Text("Confirm"),
+        ),
+      ],
+    ),
+  );
+}
+
 }
