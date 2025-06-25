@@ -28,8 +28,7 @@ environment:
 # the latest version available on pub.dev. To see which dependencies have newer
 # versions available, run `flutter pub outdated`.
 dependencies:
-  another_flushbar: ^1.10.28
-  cupertino_icons: ^1.0.8
+  
   flutter:
     sdk: flutter
   flutter_stripe: ^10.0.0
@@ -38,7 +37,6 @@ dependencies:
   image_picker: ^1.1.2
   intl: ^0.20.2
   path: ^1.9.1
-  image_picker: ^1.1.2
   file_picker: ^10.1.9
   supabase_flutter: ^2.8.4
   animate_do: ^3.3.4
@@ -46,12 +44,13 @@ dependencies:
   fl_chart: ^0.66.0
   percent_indicator: ^4.2.2
   cloud_firestore: ^5.6.8
-  intl: ^0.18.1
   cached_network_image: ^3.2.3
   crypto: ^3.0.3
   flutter_pdfview: ^1.2.5
-  path: ^1.9.1
-  another_flushbar: ^1.12.30
+  another_flushbar: ^1.10.28
+  cupertino_icons: ^1.0.8
+
+
 
   uuid: ^4.5.1
 
