@@ -1,4 +1,5 @@
 import 'package:cmc_travel_app/pages/organizer/org_add_trip.dart';
+import 'package:cmc_travel_app/pages/organizer/org_comment.dart';
 import 'package:cmc_travel_app/pages/organizer/org_detail_trip.dart';
 import 'package:cmc_travel_app/pages/organizer/org_edit_trip.dart';
 import 'package:cmc_travel_app/pages/organizer/org_profile_page.dart';
@@ -117,11 +118,11 @@ class _OrgHomePageState extends State<OrgHomePage> {
   }
 
   bool _isTripEditable(String status) {
-  final normalizedStatus = status.toLowerCase();
-  return normalizedStatus == 'false' || 
-         normalizedStatus == 'pending' || 
-         normalizedStatus == 'rejected';
-}
+    final normalizedStatus = status.toLowerCase();
+    return normalizedStatus == 'false' || 
+           normalizedStatus == 'pending' || 
+           normalizedStatus == 'rejected';
+  }
 
   Map<String, dynamic> _getStatusInfo(String status) {
     final normalizedStatus = status.toLowerCase();
@@ -178,26 +179,25 @@ class _OrgHomePageState extends State<OrgHomePage> {
   }
 
   Future<void> _loadPendingBookingsCount() async {
-  try {
-    final user = supabase.auth.currentUser;
-    if (user == null) return;
+    try {
+      final user = supabase.auth.currentUser;
+      if (user == null) return;
 
-    final response = await supabase
-        .from('Reservation')
-        .select('id, payment_state')
-        .eq('organizer_id', user.id)
-        .eq('payment_state', false);
+      final response = await supabase
+          .from('Reservation')
+          .select('id, payment_state')
+          .eq('organizer_id', user.id)
+          .eq('payment_state', false);
 
-    if (mounted) {
-      setState(() {
-        pendingBookingsCount = response.length;
-      });
+      if (mounted) {
+        setState(() {
+          pendingBookingsCount = response.length;
+        });
+      }
+    } catch (e) {
+      print('Error loading pending reservation count: $e');
     }
-  } catch (e) {
-    print('Error loading pending reservation count: $e');
   }
-}
-
 
   Future<void> _loadProfilePicture() async {
     final user = supabase.auth.currentUser;
@@ -336,7 +336,6 @@ class _OrgHomePageState extends State<OrgHomePage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Failed to delete trip: ${e.toString()}")),
-
         );
       }
     }
@@ -646,6 +645,37 @@ class _OrgHomePageState extends State<OrgHomePage> {
                 ),
               ),
               actions: [
+                // New comments button added here
+                Padding(
+                  padding: const EdgeInsets.only(right: 8.0),
+                  child: GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => OrgCommentPage(), 
+                        ),
+                      );
+                    },
+                    child: Material(
+                      elevation: 3.0,
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        padding: EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(
+                          Icons.comment,
+                          color: Colors.black,
+                          size: 30.0,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                // Existing notification button
                 Padding(
                   padding: const EdgeInsets.only(right: 8.0),
                   child: GestureDetector(
@@ -706,6 +736,7 @@ class _OrgHomePageState extends State<OrgHomePage> {
                     ),
                   ),
                 ),
+                // Add trip button
                 Padding(
                   padding: const EdgeInsets.only(right: 8.0),
                   child: GestureDetector(
@@ -729,6 +760,7 @@ class _OrgHomePageState extends State<OrgHomePage> {
                     ),
                   ),
                 ),
+                // Profile button
                 Padding(
                   padding: const EdgeInsets.only(right: 20.0),
                   child: GestureDetector(
