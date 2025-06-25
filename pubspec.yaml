@@ -28,14 +28,19 @@ environment:
 # the latest version available on pub.dev. To see which dependencies have newer
 # versions available, run `flutter pub outdated`.
 dependencies:
+  another_flushbar: ^1.10.28
   cupertino_icons: ^1.0.8
   flutter:
     sdk: flutter
-  flutter_svg: ^2.1.0
+  flutter_stripe: ^10.0.0
+  flutter_svg: ^2.2.0
+  http: ^1.0.0
+  image_picker: ^1.1.2
   intl: ^0.20.2
+  path: ^1.9.1
   supabase_flutter: ^2.8.4
-  another_flushbar: ^1.10.28
-  
+  uuid: ^4.5.1
+
 dev_dependencies:
   flutter_lints: ^5.0.0
   flutter_test:
