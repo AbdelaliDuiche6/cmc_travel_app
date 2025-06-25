@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../constants.dart';
@@ -59,48 +58,39 @@ class _TripsStagiaireState extends State<TripsStagiaire> {
           style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold),
         ),
       ),
-      body: isLoading
-      ? Center(child: CircularProgressIndicator(color: kPrimaryColor,),)
-      : errorMessage != null 
-      ? Center(child: Text(errorMessage!))
-      : reservations.isEmpty
-      ?Center(child: Text('No reservations yet!'))
-      : ListView.builder(
-                      itemCount: reservations.length,
-                      itemBuilder: (context, index) {
-                        final reservation = reservations[index];
-                        final voyage = reservation['Voyage'];
-                        final organizerName = voyage['profiles']['name'];
+      body:
+          isLoading
+              ? Center(child: CircularProgressIndicator(color: kPrimaryColor))
+              : errorMessage != null
+              ? Center(child: Text(errorMessage!))
+              : reservations.isEmpty
+              ? Center(child: Text('No reservations yet!'))
+              : ListView.builder(
+                itemCount: reservations.length,
+                itemBuilder: (context, index) {
+                  final reservation = reservations[index];
+                  final voyage = reservation['Voyage'];
+                  final organizerName = voyage['profiles']['name'];
 
-                        return MyTripCard(
-                          title: voyage['title'],
-                          date: voyage['date'],
-                          type: voyage['type'],
-                          organizer: organizerName,
-                          price: voyage['price_per_person'].toString(),
-                          imageUrl: voyage['image_url'],
-                          status: reservation['status'],
-                        );
-                      },
-                    ),
-
-          
-                             
-    );
-  }
-
-  Widget _button(String text, Color color, VoidCallback onPressed) {
-    return TextButton(
-      onPressed: onPressed,
-      style: TextButton.styleFrom(
-        backgroundColor: color,
-        foregroundColor: Colors.white,
-        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
-      ),
+                  return MyTripCard(
+                    title: voyage['title'] ?? '',
+                    date: DateTime.parse(voyage['date']),
+                    type: voyage['type'] ?? '',
+                    organizer: organizerName,
+                    price: (voyage['price_per_person'] ?? 0).toString(),
+                    imageUrl: voyage['image_url'] ?? '',
+                    status: reservation['status'] ?? '',
+                    reservationId: reservation['id'],
+                    voyageId: voyage['id'],
+                    paymentState: reservation['payment_state'],
+                    onRemoved: () {
+                      setState(() {
+                        reservations.removeAt(index);
+                      });
+                    },
+                  );
+                },
+              ),
     );
   }
 }
