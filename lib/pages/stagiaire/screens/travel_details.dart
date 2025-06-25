@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:another_flushbar/flushbar.dart';
-
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:cmc_travel_app/constants.dart';
-
 import '../../../models/travel.dart';
 import '../components/back_button.dart';
+import '../shared/booking_status_notifier.dart';
 
 class TravelDetails extends StatefulWidget {
   const TravelDetails({super.key, required this.travel});
@@ -19,13 +18,44 @@ class TravelDetails extends StatefulWidget {
 
 class _TravelDetailsState extends State<TravelDetails> {
   final supabase = Supabase.instance.client;
-  String organizerName = '';
+  bool isBookedByCurrentUser = false;
+  String? organizerPhone;
 
   @override
   void initState() {
     super.initState();
+    checkIfUserBooked();
+
+    BookingStatusNotifier.voyageBookingStatus.addListener(() {
+      final status =
+          BookingStatusNotifier.voyageBookingStatus.value[widget.travel.id];
+      if (status == false) {
+        setState(() {
+          isBookedByCurrentUser = false;
+        });
+      }
+    });
   }
 
+  Future<void> checkIfUserBooked() async {
+    final userId = supabase.auth.currentUser?.id;
+    if (userId == null) return;
+
+    final booking =
+        await supabase
+            .from('Reservation')
+            .select('status')
+            .eq('stagiaire_id', userId)
+            .eq('voyage_id', widget.travel.id)
+            .not('status', 'in', ['Canceled', 'Completed'])
+            .maybeSingle();
+
+    setState(() {
+      isBookedByCurrentUser = booking != null;
+    });
+
+    // debugPrint('[TravelDetails] Booking check result: $booking');
+  }
 
   void _showFlushbar(String message) {
     Flushbar(
@@ -38,6 +68,28 @@ class _TravelDetailsState extends State<TravelDetails> {
       animationDuration: Duration(milliseconds: 500),
       icon: Icon(Icons.info_outline, color: Colors.white),
     ).show(context);
+  }
+
+  Future<bool> isUserAlreadyBooked(String voyageId) async {
+    final userId = supabase.auth.currentUser?.id;
+
+    if (userId == null) return false;
+
+    final response =
+        await supabase
+            .from('Reservation')
+            .select('id, status')
+            .eq('voyage_id', voyageId)
+            .eq('stagiaire_id', userId)
+            .maybeSingle();
+
+    if (response == null ||
+        response['status'] == 'Canceled' ||
+        response['status'] == 'Completed') {
+      return false; // User did not book or has canceled or its completed
+    }
+
+    return true; // Reservation exists and not canceled and not completed
   }
 
   Future<void> _insertReservation(bool paymentState) async {
@@ -56,34 +108,51 @@ class _TravelDetailsState extends State<TravelDetails> {
       return;
     }
     try {
+      await supabase.from('Reservation').insert({
+        'stagiaire_id': userId,
+        'voyage_id': widget.travel.id,
+        'payment_state': paymentState,
+        'organizer_id': widget.travel.organizerId,
+      });
 
-     await supabase.from('Reservation').insert({
-      'stagiaire_id': userId,
-      'voyage_id': widget.travel.id,
-      'payment_state': paymentState,
-      'organizer_id': widget.travel.organizerId,
-     });
+      setState(() {
+        isBookedByCurrentUser = true;
+      });
 
-     if(paymentState) {
+      if (paymentState) {
         // Stripe only
-        await supabase.from('Voyage')
-          .update({'free_places': widget.travel.freePlaces - 1})
-          .eq('id', widget.travel.id);
+        await supabase
+            .from('Voyage')
+            .update({'free_places': widget.travel.freePlaces - 1})
+            .eq('id', widget.travel.id);
 
         setState(() {
           widget.travel.freePlaces--;
         });
       }
 
-     if (!mounted) return;
+      if (!mounted) return;
 
       Navigator.pop(context);
       _showFlushbar('Reservation created successfully!');
-    }catch(e) {
+    } catch (e) {
       if (!mounted) return;
       _showFlushbar('Error creating reservation: ${e.toString()}');
     }
-    
+  }
+
+  /// Fetch the organizer's phone number from Supabase
+  Future<void> fetchOrganizerPhone() async {
+    final response =
+        await supabase
+            .from('profiles')
+            .select('phone_number')
+            .eq('id', widget.travel.organizerId)
+            .maybeSingle();
+
+    setState(() {
+      organizerPhone = response != null ? response['phone_number'] : null;
+    });
   }
 
   void _openPaymentOverlay() {
@@ -236,7 +305,6 @@ class _TravelDetailsState extends State<TravelDetails> {
     );
   }
 
-  
   @override
   Widget build(BuildContext context) {
     final String formattedDate = DateFormat(
@@ -278,6 +346,23 @@ class _TravelDetailsState extends State<TravelDetails> {
                     margin: EdgeInsets.only(top: 35, left: 20),
                   ),
                 ],
+              ),
+              Padding(
+                padding: const EdgeInsets.only(top: 16.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      widget.travel.title,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 22,
+                        color: kPrimaryColor.withAlpha(100),
+                      ),
+                    ),
+                  ],
+                ),
               ),
               Padding(
                 padding: const EdgeInsets.all(kDefaultPadding),
@@ -381,12 +466,22 @@ class _TravelDetailsState extends State<TravelDetails> {
               ),
               SizedBox(height: 10),
               Row(
+                children: [
+                  // if() buildOrganizerContactMessage(),
+                ],
+              ),
+              SizedBox(height: 10),
+              Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   TextButton(
-                    onPressed: widget.travel.freePlaces == 0 ? null : _openPaymentOverlay,
+                    onPressed:
+                        widget.travel.freePlaces == 0 || isBookedByCurrentUser
+                            ? null
+                            : _openPaymentOverlay,
                     style: TextButton.styleFrom(
-                      backgroundColor: kPrimaryColor,
+                      backgroundColor:
+                          isBookedByCurrentUser ? Colors.grey : kPrimaryColor,
                       foregroundColor: Colors.white,
                       padding: EdgeInsets.symmetric(
                         horizontal: kDefaultPadding * 1.5,
@@ -394,7 +489,7 @@ class _TravelDetailsState extends State<TravelDetails> {
                       ),
                     ),
                     child: Text(
-                      'Book Now',
+                      isBookedByCurrentUser ? 'Booked' : 'Book Now',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 20,
@@ -428,6 +523,35 @@ class _TravelDetailsState extends State<TravelDetails> {
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
       ],
+    );
+  }
+
+  /// Show organizer contact info when booked via Cash
+  Widget buildOrganizerContactMessage() {
+    if (!isBookedByCurrentUser || organizerPhone == null)
+      return SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: kDefaultPadding,
+        vertical: 10,
+      ),
+      child: Container(
+        width: double.infinity,
+        padding: EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: Colors.red.shade50,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Text(
+          '💬 Contact the organizer to confirm your trip:\n📞 $organizerPhone',
+          style: TextStyle(
+            color: Colors.redAccent,
+            fontWeight: FontWeight.bold,
+          ),
+          textAlign: TextAlign.center,
+        ),
+      ),
     );
   }
 }
