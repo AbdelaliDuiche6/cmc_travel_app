@@ -80,7 +80,7 @@ class _NotificationsStagiareState extends State<NotificationsStagiare> {
                   ),
                   Text(
                     'time received',
-                    style: TextStyle(fontSize: 13, color: Colors.grey),
+                    style: TextStyle(fontSize: 11, color: Colors.grey),
                   ),
                 ],
               ),
