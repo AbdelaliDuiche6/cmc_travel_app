@@ -1,7 +1,7 @@
 import 'package:cmc_travel_app/pages/admin/admin_screen.dart';
 import 'package:cmc_travel_app/pages/login_screen.dart';
 import 'package:cmc_travel_app/pages/organizer/org_home_page.dart';
-import 'package:cmc_travel_app/pages/stagiaire_screen.dart';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
