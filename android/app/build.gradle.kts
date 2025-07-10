@@ -1,15 +1,19 @@
 plugins {
     id("com.android.application")
+    // START: FlutterFire Configuration
+    id("com.google.gms.google-services")
+    // END: FlutterFire Configuration
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
 
 android {
+    ndkVersion = "27.0.12077973"
     namespace = "com.example.cmc_travel_app"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
 
+    ndkVersion = "27.0.12077973"
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
@@ -42,3 +46,10 @@ android {
 flutter {
     source = "../.."
 }
+
+// dependencies {
+//     implementation("androidx.fragment:fragment:1.3.0")
+//     implementation("com.google.android.material:material:1.11.0")
+
+// }
+

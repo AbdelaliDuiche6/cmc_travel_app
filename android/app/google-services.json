@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "480211383004",
+    "project_id": "canhna-7bef0",
+    "storage_bucket": "canhna-7bef0.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:480211383004:android:5a848bd6ef1b42dac23a19",
+        "android_client_info": {
+          "package_name": "com.example.cmc_travel_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB1y0cmtKRrsepjrlZRuxE4mOFhdUtKv68"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
